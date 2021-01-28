@@ -8,6 +8,7 @@ int main (string[] args)
 	string input;
 	var running=true;
 
+	var test=new Calculation.Evaluation(config(){custom_variable=Replaceable(){key={"x","i"},value={2,1}}});
 	while(running)
 	{
 	    input=stdin.read_line();
@@ -16,32 +17,13 @@ int main (string[] args)
 	        running=false;
 	    else if(input.length>0) {
 	    int64 msec = GLib.get_real_time();
-	    var test=new Calculation.Evaluation(config(){custom_variable=Replaceable(){key={"x","i"},value={2,1}}});
-	        test.input=input;
-
-	        try {
-	            test.split();
+            try{
+            double r=test.eval_auto(input);
+	        stdout.printf(@"result:$r\ntime:$( (GLib.get_real_time()-msec)/1000 )\n\n");
 	        }
 	        catch (Error e) {
 	            stdout.printf(e.message+"\n\n");
-	            continue;
 	        }
-            try{
-	            test.prepare();
-	            }
-	            catch(Error e) {
-	                stdout.printf(e.message+"\n\n");
-	                continue;
-	            }
-	        try{
-                test.eval();
-	            }
-	            catch(Error e) {
-	                stdout.printf(e.message+"\n\n");
-	                continue;
-	            }
-
-	        stdout.printf(@"result:$(test.result)\ntime:$( (GLib.get_real_time()-msec)/1000 )\n\n");
 	    }
 	}
     stdout.printf("Calculator stopped\n");
