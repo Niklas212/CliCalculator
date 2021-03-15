@@ -23,6 +23,7 @@ int main (string[] args)
 	        }
 	        catch (Error e) {
 	            stdout.printf(e.message+"\n\n");
+	            //test.clear();
 	        }
 	    }
 	}

@@ -6,11 +6,16 @@ delegate Eval(value:array of double):double
 enum Type
 	NUMBER
 	VARIABLE
-	FUNCTION
+	//FUNCTION
 	EXPRESSION
 	CONTROL
 	OPERATOR
-
+/*
+enum PartType
+	VALUE
+	VALUES
+	FUNCTION
+*/
 struct config
 	use_degrees:bool
 	round_decimal:bool
@@ -26,6 +31,8 @@ struct PreparePart
 struct Part
 	value:double?
 	eval:fun
+	//values:array of double?
+	//type:PartType
 
 struct Replaceable
 	key:array of string

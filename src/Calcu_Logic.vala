@@ -31,6 +31,8 @@ public class Evaluation:GLib.Object
 
 	private PreparePart[] parts={};
 	public string input{get; set; default="";}
+	//public string multiple_numbers_start{get; set; default="{";}
+	//public string multiple_numbers_end{get; set; default="}";}
 	public double? result{get; private set; default=null;}
 	//public string? s_result{get; private set; default=null;}
 	private GenericArray<Part?> section=new GenericArray<Part?>();
@@ -98,14 +100,12 @@ public class Evaluation:GLib.Object
 			        parts+=ap;
 			        input=input[ap.length:input.length];
 
-			        can_negative=(ap.type==Type.OPERATOR||(ap.type==Type.CONTROL&&ap.value!=")"))?true:false;
-			        check_mul=(ap.type==Type.NUMBER||ap.type==Type.VARIABLE)?true:false;
+			        can_negative=(ap.type==Type.OPERATOR||(ap.type==Type.CONTROL&&ap.value!=")"));
+			        check_mul=(ap.type==Type.NUMBER||ap.type==Type.VARIABLE||ap.value==")");
 			    }
 			else {
 			    throw new CALC_ERROR.INVALID_SYMBOL (@"the symbol `$(input[0:1])` is not known");
 			}
-
-
 
 		}
 	}
@@ -113,6 +113,8 @@ public class Evaluation:GLib.Object
 	public void prepare() throws CALC_ERROR
 	{
 		int bracket_value = 0;
+	//	double[] numbers={};
+	//	bool multiple = false;
 
 		foreach(PreparePart part in parts)
 		{
@@ -266,7 +268,7 @@ public class Evaluation:GLib.Object
 	    }
 	}
 
-    public double eval_auto(string in,config? c=null) throws CALC_ERROR {
+    public double eval_auto(string in, config? c=null) throws CALC_ERROR {
         this.input=in;
         if(c!=null)
             this.update(c);
@@ -278,14 +280,17 @@ public class Evaluation:GLib.Object
                     this.eval();
                 }
                 catch(Error e) {
+                    this.clear();
                     throw e;
                 }
             }
             catch(Error e) {
+                this.clear();
                 throw e;
             }
         }
         catch(Error e) {
+            this.clear();
             throw e;
         }
         this.clear();
