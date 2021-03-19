@@ -96,11 +96,10 @@ public class Evaluation:GLib.Object
 			    {
                     if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
                         parts+=PreparePart(){value="*", type=Type.OPERATOR, length=1, index=2};
-                    //stdout.printf("ja");
+
+                    //requires brackets around functions to work TODO: change this
                    if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
-                        {parts += PreparePart(){value="0", type=Type.NUMBER};
-                        stdout.printf("jaaa");
-                        }
+                        parts += PreparePart(){value="0", type=Type.NUMBER};
 
 			        parts+=ap;
 			        input=input[ap.length:input.length];
@@ -126,14 +125,16 @@ public class Evaluation:GLib.Object
 			{
 				case Type.VARIABLE: {
 					section.add(Part(){
-						value=variable.value[part.index]
+						value=variable.value[part.index],
+						has_value = true
 					});
 
 					break;
 				}
 				case Type.NUMBER: {
 					section.add(Part() {
-						value=double.parse(part.value)
+						value=double.parse(part.value),
+						has_value = true
 					});
 
 					break;
@@ -194,6 +195,8 @@ public class Evaluation:GLib.Object
 //
 //
 //
+//
+/*
 	    int score=0;
 	    int promised=0;
 	    int changes=1;
@@ -234,6 +237,7 @@ public class Evaluation:GLib.Object
 //
 //
 //
+*/
 		//sortierung nach priority
 		sequence.sort(sorting);
 		//index berechnung
@@ -250,21 +254,30 @@ public class Evaluation:GLib.Object
 			//get arg_left
 			for(int l=0; l<part.eval.arg_left; l++)
 			{
-				arg+=section.get(ind-part.eval.arg_left).value;
-				section.remove_index(ind-part.eval.arg_left);
+			    if ( (ind - part.eval.arg_left) >= 0 && section.get(ind - part.eval.arg_left).has_value) {
+				    arg+=section.get(ind-part.eval.arg_left).value;
+				    section.remove_index(ind-part.eval.arg_left);
+				}
+				else throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument, a left argument is missing");
 			}
 
 			//get arg_right
 			for(int l=0; l<part.eval.arg_right; l++)
 			{
-				arg+=section.get(ind+1-part.eval.arg_left).value;
-				section.remove_index(ind+1-part.eval.arg_left);
+			    if ( (ind + 1 - part.eval.arg_left) < section.length && section.get(ind + 1 - part.eval.arg_left).has_value) {
+				    arg+=section.get(ind+1-part.eval.arg_left).value;
+				    section.remove_index(ind+1-part.eval.arg_left);
+				}
+				else throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument, a right argument is missing");
 			}
 
 			section.set(ind-part.eval.arg_left,Part(){
-				value=part.eval.eval(arg)
+				value=part.eval.eval(arg),
+				has_value = true
 			});
 		}
+		if (section.length > 1)
+		    throw new CALC_ERROR.REMAINING_ARGUMENT(@"$(section.length - 1) $( (section.length > 2) ? "arguments are" : "argument is" ) remaining");
 		result=section.get(0).value??null;
 		//s_result=result.to_string();
 		if(con.round_decimal) {

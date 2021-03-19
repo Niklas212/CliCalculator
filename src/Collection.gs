@@ -26,8 +26,7 @@ struct PreparePart
 struct Part
 	value:double?
 	eval:fun
-	//values:array of double?
-	//type:PartType
+	has_value:bool
 
 struct Replaceable
 	key:array of string
