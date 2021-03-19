@@ -10,12 +10,7 @@ enum Type
 	EXPRESSION
 	CONTROL
 	OPERATOR
-/*
-enum PartType
-	VALUE
-	VALUES
-	FUNCTION
-*/
+
 struct config
 	use_degrees:bool
 	round_decimal:bool

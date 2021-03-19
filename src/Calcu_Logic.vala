@@ -96,6 +96,11 @@ public class Evaluation:GLib.Object
 			    {
                     if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
                         parts+=PreparePart(){value="*", type=Type.OPERATOR, length=1, index=2};
+                    //stdout.printf("ja");
+                   if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
+                        {parts += PreparePart(){value="0", type=Type.NUMBER};
+                        stdout.printf("jaaa");
+                        }
 
 			        parts+=ap;
 			        input=input[ap.length:input.length];
@@ -113,8 +118,6 @@ public class Evaluation:GLib.Object
 	public void prepare() throws CALC_ERROR
 	{
 		int bracket_value = 0;
-	//	double[] numbers={};
-	//	bool multiple = false;
 
 		foreach(PreparePart part in parts)
 		{
@@ -160,10 +163,12 @@ public class Evaluation:GLib.Object
 				    break;
 				}
 				case Type.CONTROL: {
-					if(part.value==")")
-					bracket_value-=bracket;
-					else if(part.value=="(")
-					bracket_value+=bracket;
+					if(part.value==")") {
+					    bracket_value-=bracket;
+					}
+					else if(part.value=="(") {
+					    bracket_value+=bracket;
+					}
 					break;
 				}
 				default: {
