@@ -43,7 +43,7 @@ public class Evaluation:GLib.Object
 
 	public Operation operator{get; set;}
     public Func fun_intern{get; set; }
-	public string[] control{get; set; default={"(",")",","," "};}
+	public string[] control{get; set; default={"(", ")", ",", " "};}
 	public Replaceable variable{get; set;}
 
     public void clear(){
@@ -97,7 +97,6 @@ public class Evaluation:GLib.Object
                     if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
                         parts+=PreparePart(){value="*", type=Type.OPERATOR, length=1, index=2};
 
-                    //requires brackets around functions to work TODO: change this
                    if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
                         parts += PreparePart(){value="0", type=Type.NUMBER};
 
@@ -192,52 +191,7 @@ public class Evaluation:GLib.Object
 
 	public void eval() throws CALC_ERROR
 	{
-//
-//
-//
-//
-/*
-	    int score=0;
-	    int promised=0;
-	    int changes=1;
-	    bool control=false;
-	    Part sec;
 
-	    for (int i=0; i<section.length; i++) {
-	    sec=section.get(i);
-	        changes=1;
-	        control=false;
-            if(sec.value==null)
-            {
-                promised+=sec.eval.arg_right;
-                changes=1-sec.eval.arg_left;
-                control=true;
-            }
-
-                if(promised>0&&score!=0)
-                    promised-=changes;
-                else
-                    score+=changes;
-                if(control&&score!=1) {
-                if(score<1)
-                    throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument, a left argument is required");
-                else
-                    throw new CALC_ERROR.REMAINING_ARGUMENT("Remaining Argument");
-                    }
-	    }
-
-        if(promised!=0)
-            throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument");
-        if(score!=1) {
-                if(score<1)
-                    throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument");
-                else
-                    throw new CALC_ERROR.REMAINING_ARGUMENT("Remaining Argument");
-            }
-//
-//
-//
-*/
 		//sortierung nach priority
 		sequence.sort(sorting);
 		//index berechnung
@@ -258,7 +212,7 @@ public class Evaluation:GLib.Object
 				    arg+=section.get(ind-part.eval.arg_left).value;
 				    section.remove_index(ind-part.eval.arg_left);
 				}
-				else throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument, a left argument is missing");
+				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires a left argument");
 			}
 
 			//get arg_right
@@ -268,7 +222,7 @@ public class Evaluation:GLib.Object
 				    arg+=section.get(ind+1-part.eval.arg_left).value;
 				    section.remove_index(ind+1-part.eval.arg_left);
 				}
-				else throw new CALC_ERROR.MISSING_ARGUMENT("Missing Argument, a right argument is missing");
+				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires a right argument");
 			}
 
 			section.set(ind-part.eval.arg_left,Part(){
