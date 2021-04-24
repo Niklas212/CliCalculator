@@ -1,12 +1,17 @@
 [indent=0]
 uses GLib.Math
 
-delegate Eval(value:array of double):double
+delegate Eval(value:array of double, data: Data?):double
+
+class abstract Data: Object
+	prop public part:Part
+		get
+			return part
 
 enum Type
 	NUMBER
 	VARIABLE
-	//FUNCTION
+	FUNCTION
 	EXPRESSION
 	CONTROL
 	OPERATOR
@@ -23,10 +28,17 @@ struct PreparePart
 	length:int
 	index:int
 
+struct UserFunc
+	key: array of string
+	eval:Eval
+	arg_right: array of int
+	data:array of UserFuncData
+
 struct Part
 	value:double?
 	eval:fun
 	has_value:bool
+	data: Data
 
 struct Replaceable
 	key:array of string
@@ -52,6 +64,71 @@ struct Sequence
 	priority:int
 	arguments:int
 
+class UserFuncData: Data
+	part_index: array of int
+	argument_index: array of int
+	config: config
+	sequence: GenericArray of Sequence?
+	parts: GenericArray of Part?
+	evaluation: Calculation.Evaluation
+
+	def with_evaluation(eval:Calculation.Evaluation): UserFuncData
+		this.evaluation = eval
+		return this
+
+	construct with_data(expression:string, variables: array of string)
+		this.generate_data(expression, variables)
+
+	def generate_data(expression:string, variables: array of string) raises Calculation.CALC_ERROR
+		//TODO use config from this class
+		var e = new Calculation.Evaluation.small()
+		e.input = expression
+		var keys = get_variable().key
+		var values = get_variable().value
+		for i in variables
+			if i in keys
+				 raise new Calculation.CALC_ERROR.UNKNOWN(@"'$i' is already defined --- use another variable name")
+			else
+				keys += i
+				values += 0.0
+		e.variable = Replaceable(){key = keys, value = values}
+		try
+			e.split()
+		except er: Calculation.CALC_ERROR
+			e.clear()
+			raise er
+		// set part_index && argument_index
+		var parts = e.get_parts()
+		part_ind: array of int = new array of int[0]
+		argument_ind: array of int = new array of int[0]
+		i:int = 0
+		position:int = -1
+		for p in parts
+			if p.type == Type.VARIABLE
+				position = get_string_index(e.variable.key, p.value)
+				if position > 2
+					part_ind += i
+					argument_ind += position - 3
+			else if p.type == Type.CONTROL do i--
+			i++
+		this.part_index = part_ind
+		this.argument_index = argument_ind
+		//set sequence && parts
+		try
+			e.prepare()
+			this.parts = e.get_section()
+			this.sequence = e.get_sequence()
+		except er: Calculation.CALC_ERROR
+			e.clear()
+			raise er
+
+def get_string_index(arr: array of string, match:string):int
+	i:int = 0
+	for a in arr
+		if a == match
+			return i
+		i ++
+	return -1
 
 def faq(a:double):double
 	if a<0 do return 0
@@ -66,7 +143,6 @@ def mod(a:double,b:double):double
 	dc:double=floor(d)
 	if d==dc do return 0
 	ret:double=(d-dc)*b
-	//maybe to custom round
 	return Math.round(ret*100000)/100000
 
 def eval_seq(data:GenericArray of Sequence?):GenericArray of Sequence?
@@ -127,5 +203,4 @@ def next_match(data:string, key:array of string, out index:int):string
 				ind=counter
 	index=ind
 	return max_match
-
 

@@ -18,6 +18,19 @@ public class Evaluation:GLib.Object
     public Evaluation(config c=config(){use_degrees=true})
     {
         this.update(c);
+        snd_evaluation = new Evaluation.secondary();
+        //test values
+        this.fun_extern.data[0] = new UserFuncData.with_data("p*x", {"x"});
+        this.fun_extern.data[1] = new UserFuncData.with_data("sqrt(xx+yy)", {"x", "y"});
+        this.fun_extern.data[2] = new UserFuncData.with_data("x+y+xy", {"x", "y"});
+    }
+
+    private Evaluation.secondary() {
+
+    }
+
+    public Evaluation.small(config c = config(){use_degrees = true}) {
+        this.update(c);
     }
 
     public void update(config c) {
@@ -27,14 +40,11 @@ public class Evaluation:GLib.Object
         con=c;
     }
 
-    public config con;
-
+    public config con{get; set;}
+    public Evaluation? snd_evaluation = null;
 	private PreparePart[] parts={};
 	public string input{get; set; default="";}
-	//public string multiple_numbers_start{get; set; default="{";}
-	//public string multiple_numbers_end{get; set; default="}";}
 	public double? result{get; private set; default=null;}
-	//public string? s_result{get; private set; default=null;}
 	private GenericArray<Part?> section=new GenericArray<Part?>();
 	private GenericArray<Sequence?>sequence=new GenericArray<Sequence?>();
 
@@ -43,6 +53,32 @@ public class Evaluation:GLib.Object
 
 	public Operation operator{get; set;}
     public Func fun_intern{get; set; }
+    public UserFunc fun_extern {get; set; default = UserFunc(){
+        key = {"t", "hypo", "c"},
+        eval = (value, data) =>{
+                    var func_data = data as UserFuncData;
+
+                    for (int i = 0; i < func_data.parts.length; i++)
+                        func_data.evaluation.section.add(func_data.parts[i]);
+                    for (int i = 0; i < func_data.sequence.length; i++)
+                        func_data.evaluation.sequence.add(func_data.sequence[i]);
+
+                    // causes "g_object_ref: assertion 'G_IS_OBJECT (object)' failed"
+                    //func_data.parts.foreach((part) => func_data.evaluation.section.add(part));
+                    //func_data.sequence.foreach((seq) => func_data.evaluation.sequence.add(seq));
+
+                    for (int i = 0; i < func_data.part_index.length; i++) {
+                        func_data.evaluation.section[func_data.part_index[i]].value = value[func_data.argument_index[i]];
+                    }
+
+                    func_data.evaluation.eval();
+                    func_data.evaluation.clear();
+                    return func_data.evaluation.result ?? 0 / 0;
+            },
+
+        data = new UserFuncData[3],
+        arg_right = {1, 2, 2}
+    };}
 	public string[] control{get; set; default={"(", ")", ",", " "};}
 	public Replaceable variable{get; set;}
 
@@ -50,6 +86,18 @@ public class Evaluation:GLib.Object
         parts={};
         section.remove_range(0,section.length);
         sequence.remove_range(0,sequence.length);
+    }
+
+    public PreparePart[] get_parts() {
+        return this.parts;
+    }
+
+    public GenericArray<Part?> get_section() {
+        return this.section;
+    }
+
+    public GenericArray<Sequence?> get_sequence() {
+        return this.sequence;
     }
 
 	public void split() throws CALC_ERROR
@@ -62,6 +110,7 @@ public class Evaluation:GLib.Object
 		var cnt=PreparePart(){type=Type.CONTROL};
 		var vrb=PreparePart(){type=Type.VARIABLE};
 		var fui=PreparePart(){type=Type.EXPRESSION};
+		var fue=PreparePart(){type=Type.FUNCTION};
 		PreparePart ap={};
 
 		int len_num;
@@ -70,6 +119,7 @@ public class Evaluation:GLib.Object
 		int ind_cnt=-1;
 		int ind_vrb=-1;
 		int ind_fui=-1;
+		int ind_fue=-1;
 
 		while(input.length>0) {
 
@@ -78,19 +128,22 @@ public class Evaluation:GLib.Object
 			cnt.value=next_match(input,control, out ind_cnt);
 			vrb.value=next_match(input,variable.key, out ind_vrb);
 			fui.value=next_match(input,fun_intern.key, out ind_fui);
+			fue.value=next_match(input,fun_extern.key, out ind_fue);
 
 			opr.length=opr.value.length;
 			cnt.length=cnt.value.length;
 			vrb.length=vrb.value.length;
 			fui.length=fui.value.length;
+			fue.length=fue.value.length;
 			num.length=len_num;
 
 			opr.index=ind_op;
 			cnt.index=ind_cnt;
 			vrb.index=ind_vrb;
             fui.index=ind_fui;
+            fue.index=ind_fue;
 
-			ap=get_longest(opr,num,cnt,vrb,fui);
+			ap=get_longest(opr,num,cnt,vrb,fui,fue);
 
 			if(ap.length>0)
 			    {
@@ -162,6 +215,19 @@ public class Evaluation:GLib.Object
 
 				    break;
 				}
+				case Type.FUNCTION: {
+				    section.add(Part(){
+				        eval = fun(){eval = fun_extern.eval, arg_right = fun_extern.arg_right[part.index]},
+				        data  = (fun_extern.data[part.index]).with_evaluation(snd_evaluation)
+				    });
+				    //TODO pass config
+				    sequence.add(Sequence(){
+				        priority = 4 + bracket_value,
+				        arguments = fun_extern.arg_right[part.index],
+				        index = section.length - 1
+				    });
+				    break;
+				}
 				case Type.CONTROL: {
 					if(part.value==")") {
 					    bracket_value-=bracket;
@@ -226,7 +292,7 @@ public class Evaluation:GLib.Object
 			}
 
 			section.set(ind-part.eval.arg_left,Part(){
-				value=part.eval.eval(arg),
+				value=part.eval.eval(arg, part.data),
 				has_value = true
 			});
 		}
@@ -283,7 +349,7 @@ public class Evaluation:GLib.Object
 		return ret;
 	}
 
-	// zu genie <
+	// to genie <
 	CompareFunc<Sequence?> sorting = (a, b) => {
 		return (int) (a.priority < b.priority) - (int) (a.priority > b.priority);
 	};
