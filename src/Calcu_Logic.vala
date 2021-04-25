@@ -19,10 +19,10 @@ public class Evaluation:GLib.Object
     {
         this.update(c);
         snd_evaluation = new Evaluation.secondary();
-        //test values
-        this.fun_extern.data[0] = new UserFuncData.with_data("p*x", {"x"});
-        this.fun_extern.data[1] = new UserFuncData.with_data("sqrt(xx+yy)", {"x", "y"});
-        this.fun_extern.data[2] = new UserFuncData.with_data("x+y+xy", {"x", "y"});
+        //test values TODO remove
+        //this.fun_extern.data[0] = new UserFuncData.with_data("p*x", {"x"});
+        //this.fun_extern.data[1] = new UserFuncData.with_data("sqrt(xx+yy)", {"x", "y"});
+        //this.fun_extern.data[2] = new UserFuncData.with_data("x+y+xy", {"x", "y"});
     }
 
     private Evaluation.secondary() {
@@ -35,6 +35,7 @@ public class Evaluation:GLib.Object
 
     public void update(config c) {
         fun_intern=get_intern_functions(c.use_degrees);
+        fun_extern = get_extern_functions(c.custom_functions);
         operator=get_operator();
         variable=get_custom_variable(c.custom_variable);
         con=c;
@@ -53,32 +54,7 @@ public class Evaluation:GLib.Object
 
 	public Operation operator{get; set;}
     public Func fun_intern{get; set; }
-    public UserFunc fun_extern {get; set; default = UserFunc(){
-        key = {"t", "hypo", "c"},
-        eval = (value, data) =>{
-                    var func_data = data as UserFuncData;
-
-                    for (int i = 0; i < func_data.parts.length; i++)
-                        func_data.evaluation.section.add(func_data.parts[i]);
-                    for (int i = 0; i < func_data.sequence.length; i++)
-                        func_data.evaluation.sequence.add(func_data.sequence[i]);
-
-                    // causes "g_object_ref: assertion 'G_IS_OBJECT (object)' failed"
-                    //func_data.parts.foreach((part) => func_data.evaluation.section.add(part));
-                    //func_data.sequence.foreach((seq) => func_data.evaluation.sequence.add(seq));
-
-                    for (int i = 0; i < func_data.part_index.length; i++) {
-                        func_data.evaluation.section[func_data.part_index[i]].value = value[func_data.argument_index[i]];
-                    }
-
-                    func_data.evaluation.eval();
-                    func_data.evaluation.clear();
-                    return func_data.evaluation.result ?? 0 / 0;
-            },
-
-        data = new UserFuncData[3],
-        arg_right = {1, 2, 2}
-    };}
+    public UserFunc fun_extern {get; set;}
 	public string[] control{get; set; default={"(", ")", ",", " "};}
 	public Replaceable variable{get; set;}
 
@@ -259,9 +235,13 @@ public class Evaluation:GLib.Object
 	{
 
 		//sortierung nach priority
+		//int64 msec = GLib.get_real_time();
 		sequence.sort(sorting);
+		//stdout.printf(@"__time:$( (GLib.get_real_time()-msec)/1000 )\n");
 		//index berechnung
+		//msec = GLib.get_real_time();
 		sequence=eval_seq(sequence);
+		//stdout.printf(@"__time:$( (GLib.get_real_time()-msec)/1000 )\n");
 
 
 		for(int i=0; i<sequence.length; i++)
@@ -354,6 +334,27 @@ public class Evaluation:GLib.Object
 		return (int) (a.priority < b.priority) - (int) (a.priority > b.priority);
 	};
 	// >
+    public static  Eval fun_extern_eval = (value, data) =>{
+                    var func_data = data as UserFuncData;
+
+                    for (int i = 0; i < func_data.parts.length; i++)
+                        func_data.evaluation.section.add(func_data.parts[i]);
+                    for (int i = 0; i < func_data.sequence.length; i++)
+                        func_data.evaluation.sequence.add(func_data.sequence[i]);
+
+                    // causes "g_object_ref: assertion 'G_IS_OBJECT (object)' failed"
+                    //func_data.parts.foreach((part) => func_data.evaluation.section.add(part));
+                    //func_data.sequence.foreach((seq) => func_data.evaluation.sequence.add(seq));
+
+                    for (int i = 0; i < func_data.part_index.length; i++) {
+                        func_data.evaluation.section[func_data.part_index[i]].value = value[func_data.argument_index[i]];
+                    }
+
+                    func_data.evaluation.eval();
+                    func_data.evaluation.clear();
+                    return func_data.evaluation.result ?? 0 / 0;
+            };
+
 }
 
 }

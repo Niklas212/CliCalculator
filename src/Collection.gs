@@ -21,12 +21,38 @@ struct config
 	round_decimal:bool
 	decimal_digit:int
 	custom_variable:Replaceable
+	custom_functions:CustomFunctions
 
 struct PreparePart
 	value:string
 	type:Type
 	length:int
 	index:int
+
+struct CustomFunctions
+	key: array of string
+	arg_right: array of int
+	data: array of UserFuncData
+
+	def add_function(_key:string, _arg_right:int, _data:UserFuncData, _override:bool = false) raises Calculation.CALC_ERROR
+		if _key in key
+			if _override
+				for var i = 0 to key.length
+					if key[i] == _key
+						arg_right[i] = _arg_right
+						data[i] = _data
+						return
+			else
+				raise new Calculation.CALC_ERROR.UNKNOWN(@"'$_key' is already defined")
+		var keys = key
+		var args = arg_right
+		var datas = data
+		keys += _key
+		args += _arg_right
+		datas += _data
+		key = keys
+		arg_right = args
+		data = datas
 
 struct UserFunc
 	key: array of string
@@ -43,6 +69,42 @@ struct Part
 struct Replaceable
 	key:array of string
 	value:array of double
+
+	def add_variable(_key:string, _value:double, _override:bool = false) raises Calculation.CALC_ERROR
+		if _key in key or _key in get_variable().key
+			if _key in get_variable().key or not _override
+				raise new Calculation.CALC_ERROR.UNKNOWN(@"'$(_key)' is already defined")
+			if _override
+				for var i = 0 to key.length
+					if key[i] == _key
+						key[i] = _key
+						value[i] = _value
+						return
+		var values = value
+		var keys = key
+		keys += _key
+		values += _value
+		value = values
+		key = keys
+
+	def remove_variable(_name:string) raises Calculation.CALC_ERROR
+		if _name in key
+			var keys = new array of string[key.length - 1]
+			var values = new array of double[value.length - 1]
+			if key.length == 1
+				key = keys
+				value = values
+				return
+			m:int = 0
+			for var i = 0 to key.length
+				if key[i] != _name
+					keys [i - m] = key[i]
+					values [i - m] = value[i]
+				else do m = 1
+			key = keys
+			value = values
+		else
+			raise new Calculation.CALC_ERROR.UNKNOWN(@"the variable '$_name' does not exist")
 
 struct Operation
 	key:array of string

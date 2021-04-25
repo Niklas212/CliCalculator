@@ -118,3 +118,13 @@ public UserFuncData get_hypo() {
 
     return new UserFuncData(){parts = part, sequence = seq, part_index = {1, 3, 5, 7}, argument_index = {0, 0, 1, 1}};
 }
+
+public UserFunc get_extern_functions(CustomFunctions custom) {
+    return UserFunc(){
+        key = custom.key,
+        arg_right = custom.arg_right,
+        data = custom.data,
+        eval = Calculation.Evaluation.fun_extern_eval
+    };
+}
+
