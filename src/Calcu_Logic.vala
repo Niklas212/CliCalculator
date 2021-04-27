@@ -34,8 +34,14 @@ public class Evaluation:GLib.Object
     }
 
     public Evaluation.with_data(GenericArray<Part?> parts, GenericArray<Sequence?> seq) {
-        this.section = parts;
-        this.sequence = seq;
+        var _section = new GenericArray<Part?>();
+        var _sequence = new GenericArray<Sequence?>();
+
+        parts.foreach( (x) => _section.add(x) );
+        seq.foreach( (x) => _sequence.add(x) );
+
+        this.section = _section;
+        this.sequence = _sequence;
     }
 
     public void update(config c) {
