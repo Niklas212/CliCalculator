@@ -33,6 +33,11 @@ public class Evaluation:GLib.Object
         this.update(c);
     }
 
+    public Evaluation.with_data(GenericArray<Part?> parts, GenericArray<Sequence?> seq) {
+        this.section = parts;
+        this.sequence = seq;
+    }
+
     public void update(config c) {
         fun_intern=get_intern_functions(c.use_degrees);
         fun_extern = get_extern_functions(c.custom_functions);

@@ -138,10 +138,13 @@ class UserFuncData: Data
 		this.evaluation = eval
 		return this
 
-	construct with_data(expression:string, variables: array of string)
-		this.generate_data(expression, variables)
+	construct with_data(expression:string, variables: array of string) raises Calculation.CALC_ERROR
+		try
+			this.generate_data(expression, variables)
+		except e: Calculation.CALC_ERROR
+			raise e
 
-	def generate_data(expression:string, variables: array of string) raises Calculation.CALC_ERROR
+	def generate_data(expression:string, variables: array of string, test:bool = true) raises Calculation.CALC_ERROR
 		//TODO use config from this class
 		var e = new Calculation.Evaluation.small()
 		e.input = expression
@@ -183,6 +186,15 @@ class UserFuncData: Data
 		except er: Calculation.CALC_ERROR
 			e.clear()
 			raise er
+
+		//test generated data
+		if test
+			var test_e = new Calculation.Evaluation.with_data(e.get_section(), e.get_sequence())
+			try
+				test_e.eval()
+			except er: Calculation.CALC_ERROR
+				er.message = "incorrect expression: " + er.message
+				raise er
 
 def get_string_index(arr: array of string, match:string):int
 	i:int = 0

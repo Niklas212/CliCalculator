@@ -52,21 +52,19 @@ int main (string[] args)
 	            try {
 	                var data = new UserFuncData.with_data(expression, paras);
 	                funs.add_function(name, paras.length, data);
-	    conf.custom_functions = funs;
+	                conf.custom_functions = funs;
 	                calc.update(conf);
+	                print("\n");
 	            } catch (Error e) {
 	                print(e.message + "\n\n");
 	            }
-	            /*print(@"ex:$expression, name:$name, args:$(paras.length)\n\n");
-	            for (int i =0; i<paras.length; i++)
-	                print(@"$i:$(paras[i])\n");*/
 	            continue;
 	        }
 	        else if (Regex.match_simple("^delete[a-zA-Z]+$", input.replace(" ", ""))) {
 	            var name = input.replace("delete", "").replace(" ", "");
                 try {
                     valis.remove_variable(name);
-        conf.custom_variable = valis;
+                    conf.custom_variable = valis;
                     calc.update(conf);
                     print(@"variable '$name' deleted\n\n");
                 } catch (Error e) {
