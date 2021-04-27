@@ -54,6 +54,31 @@ struct CustomFunctions
 		arg_right = args
 		data = datas
 
+	def remove_function(name:string) raises Calculation.CALC_ERROR
+		if not (name in key) do raise new Calculation.CALC_ERROR.UNKNOWN(@"the function '$name' is not defined")
+
+		var keys = new array of string[key.length - 1]
+		var args = new array of int[key.length - 1]
+		var datas = new array of UserFuncData[key.length - 1]
+
+		if key.length == 1
+			key = keys
+			arg_right = args
+			data = datas
+			return
+
+		m:int = 0
+		for var i = 0 to keys.length
+			if key[i] == name do m = 1
+			else
+				keys[i - m] = key[i]
+				args[i - m] = arg_right[i]
+				datas[i - m] = data[i]
+		key = keys
+		data = datas
+		arg_right = args
+
+
 struct UserFunc
 	key: array of string
 	eval:Eval

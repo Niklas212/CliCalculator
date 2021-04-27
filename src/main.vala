@@ -11,7 +11,6 @@ int main (string[] args)
 	var valis = Replaceable();
 	var funs = CustomFunctions();
 	var conf = config();
-	funs.add_function("tri", 2, new UserFuncData.with_data("0.5xy", {"x", "y"}));
     var calc = new Calculation.Evaluation(config(){use_degrees = true});
 
 	while(running)
@@ -24,6 +23,12 @@ int main (string[] args)
 	        if (Regex.match_simple(@"[a-zA-Zw]+[=:].+", input.replace(" ", ""))) {
 	            var parts = Regex.split_simple("[=:]", input);
 	            string key = parts[0].replace(" ", "");
+	            //checks if a function is named so
+	            //print(@"__$(parts[0])__");
+	            if (parts[0].replace(" ", "") in conf.custom_functions.key) {
+	                print(@"$(parts[0]) is already defined (function)\n\n");
+	                continue;
+	            }
 	            double value = 0;
 
 	            try {
@@ -49,6 +54,11 @@ int main (string[] args)
 	            var fst_parts = Regex.split_simple("[(]", parts[0]);
 	            string name = fst_parts[0].replace(" ","");
 	            string[] paras = Regex.split_simple(",", (fst_parts[1].replace(" ", ""))[0:-1]);
+	            //checks if a variable is already named so
+	            if (name in conf.custom_variable.key) {
+	                print(@"$name is already defined (variable)\n\n");
+	                continue;
+	            }
 	            try {
 	                var data = new UserFuncData.with_data(expression, paras);
 	                funs.add_function(name, paras.length, data);
@@ -63,23 +73,36 @@ int main (string[] args)
 	        else if (Regex.match_simple("^delete[a-zA-Z]+$", input.replace(" ", ""))) {
 	            var name = input.replace("delete", "").replace(" ", "");
                 try {
-                    valis.remove_variable(name);
+                    if (name in valis.key) {
+                        valis.remove_variable(name);
+                        print(@"variable '$name' deleted\n\n");
+                    }
+                    else if (name in funs.key) {
+                        funs.remove_function(name);
+                        print(@"function '$name' deleted\n\n");
+                    }
+                    else
+                        throw new CALC_ERROR.UNKNOWN(@"'$name' is not defined");
                     conf.custom_variable = valis;
+                    conf.custom_functions = funs;
                     calc.update(conf);
-                    print(@"variable '$name' deleted\n\n");
                 } catch (Error e) {
                     print(e.message + "\n\n");
                 }
                 continue;
 	        }
 	        else if (input == "list") {
-	            if (valis.key.length > 0) {
+	            if (valis.key.length > 0 || funs.key.length > 0) {
+	                //variables
 	                for (int i = 0; i < valis.key.length; i++) {
 	                    print(@"\t$(valis.key[i])\t=\t$(valis.value[i])\n");
 	                }
+	                //functions
+	                for (int i = 0; i < funs.key.length; i++)
+	                    print(@"\t$(funs.key[i]) (function)\n");
 	                print("\n");
 	            }
-	            else print("no variables created\ntype '[name] = [value]' to create a variable\n\n");
+	            else print("no variables or functions created\ntype '[name] = [value]' to create a variable\ntype '[name]([para1], [para2], ...) = [expression]' to create a function\n\n");
 	            continue;
 	        }
             try {
