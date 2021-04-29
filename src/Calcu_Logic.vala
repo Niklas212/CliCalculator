@@ -279,7 +279,7 @@ public class Evaluation:GLib.Object
 				    arg+=section.get(ind+1-part.eval.arg_left).value;
 				    section.remove_index(ind+1-part.eval.arg_left);
 				}
-				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires a right argument");
+				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires $(part.eval.arg_right) right $( (part.eval.arg_right > 1) ? "arguments" : "argument"  )");
 			}
 
 			section.set(ind-part.eval.arg_left,Part(){
