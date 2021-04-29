@@ -24,7 +24,6 @@ int main (string[] args)
 	            var parts = Regex.split_simple("[=:]", input);
 	            string key = parts[0].replace(" ", "");
 	            //checks if a function is named so
-	            //print(@"__$(parts[0])__");
 	            if (parts[0].replace(" ", "") in conf.custom_functions.key) {
 	                print(@"$(parts[0]) is already defined (function)\n\n");
 	                continue;
@@ -40,7 +39,7 @@ int main (string[] args)
 
 	            try {
 	                valis.add_variable(key, value, true);
-	    conf.custom_variable = valis;
+	                conf.custom_variable = valis;
 	                calc.update(conf);
 	            } catch (Error e) {
 	                print(e.message + "\n\n");
