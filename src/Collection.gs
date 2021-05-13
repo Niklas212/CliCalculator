@@ -54,8 +54,10 @@ struct CustomFunctions
 		arg_right = args
 		data = datas
 
-	def remove_function(name:string) raises Calculation.CALC_ERROR
+	def remove_function(name:string):int raises Calculation.CALC_ERROR
 		if not (name in key) do raise new Calculation.CALC_ERROR.UNKNOWN(@"the function '$name' is not defined")
+
+		index:int = -1
 
 		var keys = new array of string[key.length - 1]
 		var args = new array of int[key.length - 1]
@@ -65,11 +67,13 @@ struct CustomFunctions
 			key = keys
 			arg_right = args
 			data = datas
-			return
+			return 0
 
 		m:int = 0
 		for var i = 0 to keys.length
-			if key[i] == name do m = 1
+			if key[i] == name
+				m = 1
+				index = i
 			else
 				keys[i - m] = key[i]
 				args[i - m] = arg_right[i]
@@ -77,6 +81,8 @@ struct CustomFunctions
 		key = keys
 		data = datas
 		arg_right = args
+
+		return index
 
 
 struct UserFunc
@@ -112,22 +118,27 @@ struct Replaceable
 		value = values
 		key = keys
 
-	def remove_variable(_name:string) raises Calculation.CALC_ERROR
+	def remove_variable(_name:string):int raises Calculation.CALC_ERROR
+		index:int = -1
 		if _name in key
 			var keys = new array of string[key.length - 1]
 			var values = new array of double[value.length - 1]
 			if key.length == 1
 				key = keys
 				value = values
-				return
+				return 0
 			m:int = 0
 			for var i = 0 to (key.length - 1)
 				if key[i] != _name
 					keys [i - m] = key[i]
 					values [i - m] = value[i]
-				else do m = 1
+				else
+					m = 1
+					index = i
 			key = keys
 			value = values
+
+			return index
 		else
 			raise new Calculation.CALC_ERROR.UNKNOWN(@"the variable '$_name' does not exist")
 
@@ -259,7 +270,7 @@ def eval_seq(data:GenericArray of Sequence?):GenericArray of Sequence?
 def possible_number(data:string,negative:bool,is:bool=false):bool
 	is_decimal:bool=false
 
-	for var i=0 to data.length
+	for var i=0 to (data.length - 1)
 		if data[i].to_string() in "0123456789"
 			continue
 		else if data[i] == '.'
