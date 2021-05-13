@@ -37,7 +37,7 @@ struct CustomFunctions
 	def add_function(_key:string, _arg_right:int, _data:UserFuncData, _override:bool = false) raises Calculation.CALC_ERROR
 		if _key in key
 			if _override
-				for var i = 0 to key.length
+				for var i = 0 to (key.length - 1)
 					if key[i] == _key
 						arg_right[i] = _arg_right
 						data[i] = _data
@@ -100,7 +100,7 @@ struct Replaceable
 			if _key in get_variable().key or not _override
 				raise new Calculation.CALC_ERROR.UNKNOWN(@"'$(_key)' is already defined")
 			if _override
-				for var i = 0 to key.length
+				for var i = 0 to (key.length - 1)
 					if key[i] == _key
 						key[i] = _key
 						value[i] = _value
@@ -121,7 +121,7 @@ struct Replaceable
 				value = values
 				return
 			m:int = 0
-			for var i = 0 to key.length
+			for var i = 0 to (key.length - 1)
 				if key[i] != _name
 					keys [i - m] = key[i]
 					values [i - m] = value[i]

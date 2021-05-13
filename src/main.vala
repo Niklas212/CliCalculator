@@ -91,6 +91,7 @@ int main (string[] args)
                 continue;
 	        }
 	        else if (input == "list") {
+	            print (@"=> '$(funs.key.length)'\n");
 	            if (valis.key.length > 0 || funs.key.length > 0) {
 	                //variables
 	                for (int i = 0; i < valis.key.length; i++) {
