@@ -240,6 +240,9 @@ public class Evaluation:GLib.Object
 	    }
 	}
 
+	if (section.length < 1)
+	    throw new CALC_ERROR.MISSING_ARGUMENT ("");
+
 	}
 
 	public void eval() throws CALC_ERROR
@@ -303,20 +306,8 @@ public class Evaluation:GLib.Object
             this.update(c);
         try{
             this.split();
-            try{
-                this.prepare();
-                try{
-                    this.eval();
-                }
-                catch(Error e) {
-                    this.clear();
-                    throw e;
-                }
-            }
-            catch(Error e) {
-                this.clear();
-                throw e;
-            }
+            this.prepare();
+            this.eval();
         }
         catch(Error e) {
             this.clear();
