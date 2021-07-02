@@ -280,13 +280,13 @@ def next_multi_match (input:string, data:array of MatchData): PreparePart
 
 	i:int = -1
 	j:int = -1
-
+	// consider using sorted (string-length) data
 	for d in data
 		i ++
 		j = -1
 		for e in d.key
 			j ++
-			if (e.length <= input.length && input[0:e.length] == e)
+			if (e.length <= input.length && e.length > max_match_length && input[0:e.length] == e)
 				max_match_type_index = i
 				max_match_index = j
 				max_match_length = e.length
