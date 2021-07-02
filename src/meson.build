@@ -12,6 +12,8 @@ clicalculator_deps = [
 
 ]
 
+#add_project_arguments('-D', 'DEBUG', language: 'vala')
+
 executable('clicalculator', clicalculator_sources,
   vala_args: '--target-glib=2.58',  dependencies: clicalculator_deps,
   install: true,
