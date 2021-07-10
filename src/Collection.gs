@@ -8,6 +8,11 @@ class abstract Data: Object
 		get
 			return part
 
+
+enum Modifier
+	OPENING_BRACKET = 1
+
+
 enum Type
 	NUMBER
 	VARIABLE
@@ -96,11 +101,14 @@ struct UserFunc
 	data:array of UserFuncData
 
 struct Part
-	value:double?
-	eval:fun
-	has_value:bool
-	priority:uint
+	value: double?
+	eval: fun
+	has_value: bool
+	priority: uint
 	data: Data
+	modifier: Modifier
+	bracket_value: int
+	index: int
 
 struct Replaceable
 	key:array of string
@@ -260,6 +268,19 @@ def mod(a:double,b:double):double
 	if d==dc do return 0
 	ret:double=(d-dc)*b
 	return Math.round(ret*100000)/100000
+
+def sum (v:array of double): double
+	result:double = 0
+	for d in v
+		result += d
+	return result
+
+
+def mean (v:array of double): double
+	result:double = 0
+	for d in v
+		result += d
+	return result / v.length
 
 
 def next_multi_match (input:string, data:array of MatchData): PreparePart

@@ -133,47 +133,50 @@ public class Evaluation:GLib.Object
 	public void prepare() throws CALC_ERROR
 	{
 		int bracket_value = 0;
+		int invisible_parts = 0;
 
-		foreach(PreparePart part in parts)
+		foreach (PreparePart part in parts)
 		{
-
-			switch(part.type)
+			switch (part.type)
 			{
 				case Type.VARIABLE: {
-					section.add(Part(){
-						value=variable.value[part.index],
+					section.add (Part () {
+						value = variable.value[part.index],
 						has_value = true
 					});
 
 					break;
 				}
 				case Type.NUMBER: {
-					section.add(Part() {
-						value=double.parse(part.value),
+					section.add (Part () {
+						value = double.parse (part.value),
 						has_value = true
 					});
 
 					break;
 				}
 				case Type.OPERATOR: {
-					section.add(Part(){
-						eval=operator.eval[part.index],
-						priority = bracket_value+operator.priority[part.index]
+					section.add (Part () {
+					    index = section.length + invisible_parts,
+						eval = operator.eval[part.index],
+						priority = bracket_value + operator.priority[part.index]
 					});
-					sequence.add (bracket_value+operator.priority[part.index]);
+					sequence.add (bracket_value + operator.priority[part.index]);
 
 					break;
 				}
 				case Type.EXPRESSION: {
-				    section.add(Part(){
-				        eval=fun_intern.eval[part.index],
+				    section.add (Part () {
+				        index = section.length + invisible_parts,
+				        eval = fun_intern.eval[part.index],
 				        priority = 4 + bracket_value
 				    });
                     sequence.add (bracket_value + 4);
 				    break;
 				}
 				case Type.FUNCTION: {
-				    section.add(Part(){
+				    section.add (Part () {
+				        index = section.length + invisible_parts,
 				        priority = 4 + bracket_value,
 				        eval = fun(){eval = fun_extern.eval, arg_right = fun_extern.arg_right[part.index]},
 				        data  = (fun_extern.data[part.index]).with_evaluation(snd_evaluation)
@@ -183,11 +186,18 @@ public class Evaluation:GLib.Object
 				    break;
 				}
 				case Type.CONTROL: {
-					if(part.value==")") {
-					    bracket_value-=bracket;
+				    invisible_parts ++;
+					if (part.value == ")") {
+					    bracket_value -= bracket;
+					    if (section.length >= 1)
+					        section.get (section.length - 1).bracket_value --;
 					}
-					else if(part.value=="(") {
-					    bracket_value+=bracket;
+					else if (part.value == "(") {
+					    bracket_value += bracket;
+                        if (section.length >= 1) {
+					        section.get (section.length - 1).bracket_value ++;
+					        section.get (section.length - 1).modifier = OPENING_BRACKET;
+					    }
 					}
 					break;
 				}
@@ -215,25 +225,39 @@ public class Evaluation:GLib.Object
 	public void eval() throws CALC_ERROR
 	{
 
-		sequence.sort ( (a, b) => (int) (a < b) );
+        sequence.sort ( (a, b) => (int) (a < b) );
 
 
-		for(int i=0; i<sequence.length; i++)
+		for (int i = 0; i < sequence.length; i++)
 		{
 			var ind = -1;
 
 			for (int j = 0; j < section.length; j++)
-			    if (section.get(j).has_value == false && section.get(j).priority == sequence.get(i))
+			    if (section.get(j).has_value == false && section.get(j).priority == sequence.get(i)) {
 			        ind = j;
+			        break;
+			    }
 
-			var part = section.get(ind);
+			var part = section.get (ind);
+
+			var bracket_scope = 0;
+			var check_scope = false;
+			if ( (part.eval.arg_right >= 1 || part.eval.arg_right == -1) ) {
+			    check_scope = true;
+			    bracket_scope = part.bracket_value;
+
+			    if (! (part.modifier == OPENING_BRACKET)) {
+			        bracket_scope ++;
+			    }
+			    //bracket_scope += (int) (OPENING_BRACKET in part.modifier);
+			}
 
 			double[] arg = {};
 
 			//get arg_left
 			if (part.eval.arg_left > 0)
 			{
-			    if ( (ind - 1) >= 0 && section.get(ind - 1).has_value) {
+			    if ( (ind - 1) >= 0 && section.get (ind - 1).has_value) {
 				    arg += section.get (ind - 1).value;
 				    section.remove_index (ind - 1);
 				}
@@ -241,20 +265,30 @@ public class Evaluation:GLib.Object
 			}
 
 			//get arg_right
-			for(int l=0; l<part.eval.arg_right; l++)
+			int l = 0;
+			while (l < part.eval.arg_right || part.eval.arg_right == -1)
 			{
-			    if ( (ind + 1 - part.eval.arg_left) < section.length && section.get(ind + 1 - part.eval.arg_left).has_value) {
-				    arg+=section.get(ind+1-part.eval.arg_left).value;
-				    section.remove_index(ind+1-part.eval.arg_left);
+			    l ++;
+			    if ( (ind + 1 - part.eval.arg_left) < section.length && section.get (ind + 1 - part.eval.arg_left).has_value && !(check_scope && bracket_scope <= 0) ) {
+				    arg += section.get (ind + 1 - part.eval.arg_left).value;
+				    bracket_scope += section.get (ind + 1 - part.eval.arg_left).bracket_value;
+				    section.remove_index (ind + 1 - part.eval.arg_left);
 				}
-				else if (part.eval.min_arg_right != -1 && l >= part.eval.min_arg_right)
+				else if (part.eval.min_arg_right != -1 && l > part.eval.min_arg_right) {
 				    break;
-				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires $(part.eval.arg_right) right $( (part.eval.arg_right > 1) ? "arguments" : "argument"  )");
+				}
+				else {
+				    var arg_right = (part.eval.min_arg_right > 0) ? part.eval.min_arg_right : part.eval.arg_right;
+				    var no_max = part.eval.min_arg_right > 0;
+				    var key = parts[part.index].value;
+				    throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$key' requires $( (no_max) ? "at least " : "" )$(arg_right) right $( (arg_right > 1) ? "arguments" : "argument"  )");
+			    }
 			}
 
-			section.set(ind-part.eval.arg_left,Part(){
-				value=part.eval.eval(arg, part.data),
-				has_value = true
+			section.set (ind - part.eval.arg_left, Part() {
+				value = part.eval.eval(arg, part.data),
+				has_value = true,
+				bracket_value = bracket_scope
 			});
 		}
 		if (section.length > 1)
