@@ -4,7 +4,7 @@ int main (string[] args)
 {
 
     var conf = config ();
-    var calc = new Evaluation (conf);
+    var calc = new Evaluation ();
 
     Execution eval = (input) => {
         try {
