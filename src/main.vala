@@ -116,7 +116,7 @@ int main (string[] args)
         },
         commands = {
             Command () {
-                name = "ls:",
+                name = "ls",
                 description = "lists all created functions and variables",
                 execute = list
             },
@@ -135,7 +135,7 @@ int main (string[] args)
                 execute = create_function
             },
             Command () {
-                name = "rm:",
+                name = "rm",
                 description = "removes a specified variable or function\ne.g. 'rm x'",
                 use_regex = true,
                 regex_match = "^rm [a-zA-Z]+$",
