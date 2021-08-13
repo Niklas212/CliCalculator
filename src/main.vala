@@ -55,6 +55,7 @@ int main (string[] args)
             valis.add_variable(key, value, true);
             conf.custom_variable = valis;
             calc.update(conf);
+            print (@">> variable '$key' defined ($value)\n");
         } catch (Error e) {
             print(e.message + "\n\n");
         }
@@ -79,7 +80,7 @@ int main (string[] args)
             funs.add_function(name, paras.length, data);
             conf.custom_functions = funs;
             calc.update(conf);
-            print("\n");
+            print(@">> function '$name' defined\n\n");
         } catch (Error e) {
             print(e.message + "\n\n");
         }
