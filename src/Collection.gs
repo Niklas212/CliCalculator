@@ -278,6 +278,19 @@ def mean (v:array of double): double
 		result += d
 	return result / v.length
 
+def median (v: array of double): double
+	// sorting //TODO use faster algorithm
+	for var i = 0 to (v.length - 2)
+		for var j = 0 to (v.length - 2)
+			if (v[j] > v[j + 1])
+				var tmp = v[j + 1]
+				v[j + 1] = v[j]
+				v[j] = tmp
+
+	if v.length % 2 == 0 do return (v[v.length / 2] + v[(v.length - 1) / 2]) / 2
+	else do return v[(v.length - 1) / 2]
+
+
 
 def next_multi_match (input:string, data:array of MatchData): PreparePart
 	max_match_type_index:int = -1

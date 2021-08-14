@@ -2,13 +2,14 @@ using GLib.Math;
 
 public Func get_basic_functions () {
     return Func () {
-        key = {"sqrt", "root", "mod", "sum", "mean"},
+        key = {"sqrt", "root", "mod", "sum", "mean", "median"},
         eval = {
             fun () {eval = (value) => sqrt (value[0]), arg_left = 0, arg_right = 1},
             fun () {eval = (value) => pow (value[1], 1 / value[0]), arg_left = 0, arg_right = 2},
             fun () {eval = (value) => mod (value[0], value[1]), arg_left = 0, arg_right = 2},
             fun (2) {eval = (value) => sum (value), arg_left = 0, arg_right = -1},
-            fun (1) {eval = (value) => mean (value), arg_left = 0, arg_right = -1}
+            fun (1) {eval = (value) => mean (value), arg_left = 0, arg_right = -1},
+            fun (2) {eval = (value) => median (value), arg_left = 0, arg_right = -1}
         }
     };
 }
