@@ -132,7 +132,7 @@ int main (string[] args)
                 name = "create a function",
                 description = "type '[name]([para1], [para2], ...) = [expression]' to create a function'\ne.g. 'f(x) = x^2 + 2x' or 'hypo(a, b) = sqrt (a^2 + b^2)'",
                 use_regex = true,
-                regex_match = "^[a-zA-Z]+[ ]?[(]([a-zA-Z],[ ]?)*[a-zA-Z][)][ ]?=.+$",
+                regex_match = "^[a-zA-Z]+[ ]?[(]([a-zA-Z]+,[ ]?)*[a-zA-Z]+[)][ ]?=.+$",
                 execute = create_function
             },
             Command () {
