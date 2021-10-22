@@ -201,16 +201,6 @@ int main (string[] args)
                 execute = delete
             },
             Command () {
-                name = "RADIAN",
-                description = "use radians",
-                execute = () => calc.mode = MODE.RADIAN
-            },
-             Command () {
-                name = "DEGREE",
-                description = "use degrees",
-                execute = () => calc.mode = MODE.DEGREE
-            },
-            Command () {
                 name = "settings",
                 description = "show or change settings",
                 execute = settings
