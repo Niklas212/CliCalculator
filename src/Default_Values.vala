@@ -1,7 +1,7 @@
 using GLib.Math;
 
 public Func get_basic_functions () {
-    return Func () {
+    return new Func () {
         key = {"sqrt", "root", "mod", "sum", "mean", "median"},
         eval = {
             fun () {eval = (value) => sqrt (value[0]), arg_left = 0, arg_right = 1},
@@ -15,7 +15,7 @@ public Func get_basic_functions () {
 }
 
 public Func get_trigonometric_functions_deg () {
-    return Func () {
+    return new Func () {
         key = {"sin", "cos", "tan", "sinh", "cosh", "tanh"},
         eval = {
             fun () {eval = (value) => sin (value[0] * PI / 180), arg_left = 0, arg_right = 1},
@@ -29,7 +29,7 @@ public Func get_trigonometric_functions_deg () {
 }
 
 public Func get_trigonometric_functions_rad () {
-    return Func () {
+    return new Func () {
         key = {"sin", "cos", "tan", "sinh", "cosh", "tanh"},
         eval = {
             fun () {eval = (value) => sin (value[0]), arg_left = 0, arg_right = 1},
@@ -44,6 +44,7 @@ public Func get_trigonometric_functions_rad () {
 
 public Func get_intern_functions (bool mode)
 {
+//TODO: reimplement
     Func funs = get_basic_functions ();
     var keys = funs.key;
     var evals = funs.eval;
@@ -60,7 +61,7 @@ public Func get_intern_functions (bool mode)
     return funs;
 }
 
-public Operation get_operator()
+public Operation get_default_operators ()
 {
     return Operation(){
 		key={"+","-","*","/","%","^","!","E"},
@@ -90,40 +91,12 @@ public Operation get_operator()
 	};
 }
 
-public Replaceable get_variable()
+public Replaceable get_default_variables ()
 {
-    Replaceable ret = Replaceable () {
+    Replaceable ret = new Replaceable () {
         key = {"e", "p", "pi"},
-        value = {2.71828189, PI, PI}
+        value = {2.71828189, PI, PI},
+        amount_protected_variables = 3
     };
     return ret;
 }
-
-public Replaceable get_custom_variable (Replaceable custom )
-{
-    var ret = get_variable();
-    var keys = ret.key;
-    var values = ret.value;
-
-    for (int i = 0; i < custom.key.length; i++) {
-        if (custom.key[i] in keys) {
-            continue;
-        }
-        else {
-            keys += custom.key[i];
-            values += custom.value[i];
-        }
-    }
-
-    return Replaceable () {key = keys, value = values};
-}
-
-
-public UserFunc get_extern_functions (CustomFunctions custom) {
-    return UserFunc () {
-        key = custom.key,
-        arg_right = custom.arg_right,
-        data = custom.data
-    };
-}
-

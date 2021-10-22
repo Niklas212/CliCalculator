@@ -20,14 +20,14 @@ enum Type
 	EXPRESSION
 	CONTROL
 	OPERATOR
-
+/*
 struct config
 	use_degrees:bool
 	round_decimal:bool
 	decimal_digit:int
-	custom_variable:Replaceable
-	custom_functions:CustomFunctions
-
+	//custom_variable:Replaceable
+	//custom_functions:CustomFunctions
+*/
 struct MatchData
 	key: array of string
 	type: Type
@@ -38,10 +38,11 @@ struct PreparePart
 	length:int
 	index:int
 
-struct CustomFunctions
+class UserFunc
 	key: array of string
 	arg_right: array of int
 	data: array of UserFuncData
+	eval: Eval
 
 	def add_function(_key:string, _arg_right:int, _data:UserFuncData, _override:bool = false) raises Calculation.CALC_ERROR
 		if _key in key
@@ -93,12 +94,13 @@ struct CustomFunctions
 
 		return index
 
-
+/*
 struct UserFunc
 	key: array of string
 	eval:Eval
 	arg_right: array of int
 	data:array of UserFuncData
+*/
 
 struct Part
 	value: double?
@@ -110,13 +112,14 @@ struct Part
 	bracket_value: int
 	index: int
 
-struct Replaceable
+class Replaceable
 	key:array of string
 	value:array of double
+	amount_protected_variables: int
 
 	def add_variable(_key:string, _value:double, _override:bool = false) raises Calculation.CALC_ERROR
-		if _key in key or _key in get_variable().key
-			if _key in get_variable().key or not _override
+		if _key in key or _key in get_default_variables ().key
+			if _key in get_default_variables ().key or not _override
 				raise new Calculation.CALC_ERROR.UNKNOWN(@"'$(_key)' is already defined")
 			if _override
 				for var i = 0 to (key.length - 1)
@@ -133,7 +136,7 @@ struct Replaceable
 
 	def remove_variable(_name:string):int raises Calculation.CALC_ERROR
 		index:int = -1
-		if _name in key
+		if _name in key[amount_protected_variables:key.length]
 			var keys = new array of string[key.length - 1]
 			var values = new array of double[value.length - 1]
 			if key.length == 1
@@ -152,6 +155,8 @@ struct Replaceable
 			value = values
 
 			return index
+		else if _name in key [0 : amount_protected_variables]
+			raise new Calculation.CALC_ERROR.UNKNOWN (@"the variable '$_name' can not be deleted")
 		else
 			raise new Calculation.CALC_ERROR.UNKNOWN(@"the variable '$_name' does not exist")
 
@@ -160,7 +165,7 @@ struct Operation
 	priority:array of int
 	eval:array of fun
 
-struct Func
+class Func
 	key:array of string
 	eval:array of fun
 
@@ -178,7 +183,6 @@ struct fun
 class UserFuncData: Data
 	part_index: array of int
 	argument_index: array of int
-	config: config
 	sequence: GenericArray of uint?
 	parts: GenericArray of Part?
 
@@ -189,19 +193,16 @@ class UserFuncData: Data
 			raise e
 
 	def generate_data(expression:string, variables: array of string, test:bool = true) raises Calculation.CALC_ERROR
-		//TODO use config from this class
-		var e = new Calculation.Evaluation.small()
+		var e = new Calculation.Evaluation()
 		e.input = expression
-		var keys = get_variable().key
-		var values = get_variable().value
+
+		var amount_default_vars = e.variable.key.length
+
 		for i in variables
-			if i in keys
+			if i in e.variable.key
 				 raise new Calculation.CALC_ERROR.UNKNOWN(@"'$i' is already defined --- use another variable name")
 			else
-				keys += i
-				values += 0.0
-		e.variable = Replaceable(){key = keys, value = values}
-		e.update_match_data ()
+				e.add_variable (i, 0.0)
 		try
 			e.split()
 		except er: Calculation.CALC_ERROR
@@ -216,9 +217,9 @@ class UserFuncData: Data
 		for p in parts
 			if p.type == Type.VARIABLE
 				position = get_string_index(e.variable.key, p.value)
-				if position > 2
+				if position > (amount_default_vars - 1)
 					part_ind += i
-					argument_ind += position - 3
+					argument_ind += position - amount_default_vars
 			else if p.type == Type.CONTROL do i--
 			i++
 		this.part_index = part_ind

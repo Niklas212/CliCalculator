@@ -8,26 +8,51 @@ public errordomain CALC_ERROR {
     MISSING_CLOSING_BRACKET,
     MISSING_OPENING_BRACKET,
     UNKNOWN
+}
+
+public enum MODE {
+    DEGREE,
+    RADIAN;
+
+    public string to_string () {
+        return @"$( (this == MODE.DEGREE) ? "DEGREE" : "RADIAN" )";
     }
+}
 
+public enum MATCH_DATA_TYPE {
+    OPERATOR,
+	FUN_INTERN,
+	FUN_EXTERN,
+	CONTROL,
+	VARIABLE,
+    AMOUNT_TYPES
+}
 
-public class Evaluation:GLib.Object
+public class Evaluation : GLib.Object
 {
+    construct {
+        match_data = new MatchData[MATCH_DATA_TYPE.AMOUNT_TYPES];
 
+        variable = get_default_variables ();
+        fun_extern = new UserFunc ();
 
-    public Evaluation(config c=config(){use_degrees=true})
+        fun_intern_deg = get_intern_functions (true);
+        fun_intern_rad = get_intern_functions (false);
+
+        fun_intern = fun_intern_deg;
+
+        operator = get_default_operators ();
+        init_match_data ();
+    }
+
+    public Evaluation ()
     {
-        this.update(c);
+
     }
 
-    //TODO remove later
-    public Evaluation.small(config c = config(){use_degrees = true}) {
-        this.update(c);
-    }
-
-    public Evaluation.with_data(GenericArray<Part?> parts, GenericArray<uint?> seq) {
-        var _section = new GenericArray<Part?>();
-        var _sequence = new GenericArray<uint?>();
+    public Evaluation.with_data (GenericArray<Part?> parts, GenericArray<uint?> seq) {
+        var _section = new GenericArray <Part?> ();
+        var _sequence = new GenericArray <uint?> ();
 
         parts.foreach( (x) => _section.add(x) );
         seq.foreach( (x) => _sequence.add(x) );
@@ -36,34 +61,66 @@ public class Evaluation:GLib.Object
         this.sequence = _sequence;
     }
 
-    public void update(config c) {
-        fun_intern = get_intern_functions(c.use_degrees);
-        fun_extern = get_extern_functions(c.custom_functions);
-        operator = get_operator();
-        variable = get_custom_variable(c.custom_variable);
-        con = c;
+    private MODE _mode;
 
-        update_match_data ();
+    public MODE mode {
+        get {
+            return _mode;
+        }
+        set {
+            _mode = value;
+
+            if (_mode == MODE.RADIAN)
+                fun_intern = fun_intern_rad;
+            else
+                fun_intern = fun_intern_deg;
+
+        }
     }
 
-    public config con{get; set;}
-    public Evaluation? snd_evaluation = null;
-	private PreparePart[] parts={};
-	public string input{get; set; default="";}
-	public double? result{get; private set; default=null;}
-	private GenericArray<Part?> section = new GenericArray<Part?>();
+    public int8 decimal_digits {get; set; default = 4;}
+    public bool round_result {get; set; default = false;}
+
+	private PreparePart[] parts = {};
+	public string input {get; set; default = "";}
+	public double? result {get; private set; default = null;}
+	private GenericArray <Part?> section = new GenericArray <Part?> ();
 	public GenericArray <uint?> sequence = new GenericArray <uint?> ();
 
-	public int bracket{get; set; default=5;}
+	public int bracket {get; set; default = 5;}
 
+	public Operation operator {get; set;}
 
-	public Operation operator{get; set;}
-    public Func fun_intern{get; set; }
+    private Func fun_intern_deg;
+    private Func fun_intern_rad;
+    public Func fun_intern {get; set; }
+
     public UserFunc fun_extern {get; set;}
-	public string[] control{get; set; default={"(", ")", ",", " "};}
+	public string[] control {get; set; default={"(", ")", ",", " "};}
     public Replaceable variable {get; set;}
 
-	private MatchData[] match_data = new MatchData[5];
+	private MatchData[] match_data;
+
+
+    public void add_variable (string key, double value, bool override = true) throws CALC_ERROR {
+        variable.add_variable (key, value, override);
+        match_data[MATCH_DATA_TYPE.VARIABLE].key = variable.key;
+    }
+
+    public void remove_variable (string key) throws CALC_ERROR {
+        variable.remove_variable (key);
+        match_data[MATCH_DATA_TYPE.VARIABLE].key = variable.key;
+    }
+
+    public void add_function (string key, int arg_right, UserFuncData data, bool override = false) throws CALC_ERROR {
+        fun_extern.add_function (key, arg_right, data, override);
+        match_data[MATCH_DATA_TYPE.FUN_EXTERN].key = fun_extern.key;
+    }
+
+    public void remove_function (string key) throws CALC_ERROR {
+        fun_extern.remove_function (key);
+        match_data[MATCH_DATA_TYPE.FUN_EXTERN].key = fun_extern.key;
+    }
 
     public void clear(){
         parts={};
@@ -71,7 +128,7 @@ public class Evaluation:GLib.Object
         sequence.remove_range (0, sequence.length);
     }
 
-    public void update_match_data () {
+    public void init_match_data () {
         match_data = {
 		    MatchData () {key = operator.key, type = OPERATOR},
 		    MatchData () {key = fun_intern.key, type = EXPRESSION},
@@ -295,15 +352,15 @@ public class Evaluation:GLib.Object
 		if (section.length > 1)
 		    throw new CALC_ERROR.REMAINING_ARGUMENT(@"$(section.length - 1) $( (section.length > 2) ? "arguments are" : "argument is" ) remaining");
 		result = section.get(0).value ?? 0 / 0;
-		if (con.round_decimal) {
-		    result=round(result*pow(10,con.decimal_digit))/pow(10,con.decimal_digit);
+
+		if (round_result) {
+		    result = round (result * pow (10, decimal_digits)) / pow (10, decimal_digits);
 	    }
 	}
 
-    public double eval_auto (string in, config? c = null) throws CALC_ERROR {
+    public double eval_auto (string in) throws CALC_ERROR {
         this.input = in;
-        if (c != null)
-            this.update (c);
+
         try {
             #if DEBUG
             int64 msec0 = GLib.get_real_time();
@@ -382,7 +439,7 @@ public class Evaluation:GLib.Object
 			while (l < part.eval.arg_right || part.eval.arg_right == -1)
 			{
 			    l ++;
-			    if ( !(check_scope && bracket_scope <= 0) ) {
+			    if ( (ind + 1 - part.eval.arg_left) < section.length && !(check_scope && bracket_scope <= 0) ) {
 				    arg += section.get (ind + 1 - part.eval.arg_left).value;
 				    bracket_scope += section.get (ind + 1 - part.eval.arg_left).bracket_value;
 				    section.remove_index (ind + 1 - part.eval.arg_left);
