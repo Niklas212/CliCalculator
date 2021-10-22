@@ -96,15 +96,25 @@ public class Evaluation : GLib.Object
     public Func fun_intern {get; set; }
 
     public UserFunc fun_extern {get; set;}
-	public string[] control {get; set; default={"(", ")", ",", " "};}
     public Replaceable variable {get; set;}
+
+	public string[] control {get; set; default={"(", ")", ",", " "};}
 
 	private MatchData[] match_data;
 
+    public bool contains_symbol (string symbol, bool check_vars = true, bool check_funs = true) {
+        return (symbol in variable.key && check_vars) || symbol in fun_intern.key || (symbol in fun_extern.key && check_funs);
+    }
 
     public void add_variable (string key, double value, bool override = true) throws CALC_ERROR {
         variable.add_variable (key, value, override);
         match_data[MATCH_DATA_TYPE.VARIABLE].key = variable.key;
+    }
+
+    public double create_variable (string key, string value, bool override = true) throws CALC_ERROR{
+            eval_auto (value);
+            add_variable (key, result, override);
+            return result;
     }
 
     public void remove_variable (string key) throws CALC_ERROR {
@@ -115,6 +125,10 @@ public class Evaluation : GLib.Object
     public void add_function (string key, int arg_right, UserFuncData data, bool override = false) throws CALC_ERROR {
         fun_extern.add_function (key, arg_right, data, override);
         match_data[MATCH_DATA_TYPE.FUN_EXTERN].key = fun_extern.key;
+    }
+
+    public void create_function (string key, string expression, string[] variables) throws CALC_ERROR {
+        add_function (key, variables.length, new UserFuncData.with_data (expression, variables), false);
     }
 
     public void remove_function (string key) throws CALC_ERROR {

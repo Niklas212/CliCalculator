@@ -34,21 +34,13 @@ int main (string[] args)
 	    var parts = Regex.split_simple("[=:]", input);
         string key = parts[0].replace(" ", "");
         //checks if the name is used for a function
-        if (parts[0].replace(" ", "") in calc.fun_extern.key) {
+        if (calc.contains_symbol (parts[0].replace(" ", ""), false)) {
             print(@"$(parts[0]) is already defined (function)\n\n");
             return;
         }
-        double value = 0;
 
         try {
-            value = calc.eval_auto(parts[1]);
-        } catch (Error e) {
-            print(e.message + "\n\n");
-            return;
-        }
-
-        try {
-            calc.add_variable (key, value, true);
+            var value = calc.create_variable (key, parts[1], true);
             print (@">> variable '$key' defined ($value)\n");
         } catch (Error e) {
             print(e.message + "\n\n");
@@ -64,13 +56,13 @@ int main (string[] args)
         string name = fst_parts[0].replace(" ","");
         string[] paras = Regex.split_simple(",", (fst_parts[1].replace(" ", ""))[0:-1]);
         //checks if a variable is already named so
-        if (name in calc.variable.key) {
-            print(@"$name is already defined (variable)\n\n");
+        if (calc.contains_symbol (name)) {
+            print(@"$name is already defined ($( (calc.contains_symbol (name, false)) ? "function" : "variable" ))\n\n");
             return;
         }
+
         try {
-            var data = new UserFuncData.with_data(expression, paras);
-            calc.add_function(name, paras.length, data);
+            calc.create_function (name, expression, paras);
             print(@">> function '$name' defined\n\n");
         } catch (Error e) {
             print(e.message + "\n\n");
