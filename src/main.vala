@@ -3,7 +3,6 @@ using Calculation;
 int main (string[] args)
 {
 
-    var conf = config ();
     var calc = new Evaluation ();
 
     Execution eval = (input) => {
@@ -15,17 +14,15 @@ int main (string[] args)
     };
 
     Execution list = () => {
-        var valis = conf.custom_variable;
-        var funs = conf.custom_functions;
 
-        if (valis.key.length > 0 || funs.key.length > 0) {
+        if (calc.variable.key.length > 0 || calc.fun_extern.key.length > 0) {
             //variables
-            for (int i = 0; i < valis.key.length; i++) {
-                print(@"\t$(valis.key[i])\t=\t$(valis.value[i])\n");
+            for (int i = 0; i < calc.variable.key.length; i++) {
+                print(@"\t$(calc.variable.key[i])\t=\t$(calc.variable.value[i])\n");
             }
             //functions
-            for (int i = 0; i < funs.key.length; i++)
-                print(@"\t$(funs.key[i]) (function)\n");
+            for (int i = 0; i < calc.fun_extern.key.length; i++)
+                print(@"\t$(calc.fun_extern.key[i]) (function)\n");
             print("\n");
         }
         else
@@ -33,12 +30,11 @@ int main (string[] args)
     };
 
     Execution create_variable = (input) => {
-	    var valis = conf.custom_variable;
 
 	    var parts = Regex.split_simple("[=:]", input);
         string key = parts[0].replace(" ", "");
         //checks if the name is used for a function
-        if (parts[0].replace(" ", "") in conf.custom_functions.key) {
+        if (parts[0].replace(" ", "") in calc.fun_extern.key) {
             print(@"$(parts[0]) is already defined (function)\n\n");
             return;
         }
@@ -52,9 +48,7 @@ int main (string[] args)
         }
 
         try {
-            valis.add_variable(key, value, true);
-            conf.custom_variable = valis;
-            calc.update(conf);
+            calc.add_variable (key, value, true);
             print (@">> variable '$key' defined ($value)\n");
         } catch (Error e) {
             print(e.message + "\n\n");
@@ -63,7 +57,6 @@ int main (string[] args)
     };
 
     Execution create_function = (input) => {
-        var funs = conf.custom_functions;
 
         var parts = Regex.split_simple("=", input);
         string expression = parts[1];
@@ -71,15 +64,13 @@ int main (string[] args)
         string name = fst_parts[0].replace(" ","");
         string[] paras = Regex.split_simple(",", (fst_parts[1].replace(" ", ""))[0:-1]);
         //checks if a variable is already named so
-        if (name in conf.custom_variable.key) {
+        if (name in calc.variable.key) {
             print(@"$name is already defined (variable)\n\n");
             return;
         }
         try {
             var data = new UserFuncData.with_data(expression, paras);
-            funs.add_function(name, paras.length, data);
-            conf.custom_functions = funs;
-            calc.update(conf);
+            calc.add_function(name, paras.length, data);
             print(@">> function '$name' defined\n\n");
         } catch (Error e) {
             print(e.message + "\n\n");
@@ -87,27 +78,94 @@ int main (string[] args)
     };
 
     Execution delete = (input) => {
-        var valis = conf.custom_variable;
-        var funs = conf.custom_functions;
-
         var name = input.replace("rm", "").replace(" ", "");
         try {
-            if (name in valis.key) {
-                valis.remove_variable(name);
+            if (name in calc.variable.key) {
+                calc.remove_variable(name);
                 print(@"variable '$name' deleted\n\n");
             }
-            else if (name in funs.key) {
-                funs.remove_function(name);
+            else if (name in calc.fun_extern.key) {
+                calc.remove_function(name);
                 print(@"function '$name' deleted\n\n");
             }
             else
                 throw new CALC_ERROR.UNKNOWN(@"'$name' is not defined");
-            conf.custom_variable = valis;
-            conf.custom_functions = funs;
-            calc.update(conf);
         } catch (Error e) {
             print(e.message + "\n\n");
         }
+    };
+
+    Execution settings = (input) => {
+
+        string arg = input [8:input.length];
+
+
+        if (arg.chomp () == "")
+            print (@">>\tround-result:\t$(calc.round_result)\n>>\tdecimal-digits:\t$(calc.decimal_digits)\n>>\tmode:\t\t$(calc.mode)\n\n>>\ttype 'settings [setting]' to get details about a setting\n>>\ttype 'settings set [setting] [value]' to change a setting\n\n");
+        else {
+            string[] _args = arg.chomp ().chug ().split (" ");
+
+            if (_args[0] == "set") {
+                if (_args.length > 2) {
+                    switch (_args[1]) {
+                        case "round-result": {
+                            calc.round_result = _args[2][0].tolower () == 't';
+                            print (@"'round-result' set to '$(calc.round_result)'\n\n");
+                            break;
+                        }
+                        case "decimal-digits": {
+                            int8 new_digits = 0;
+
+                            try {
+                                new_digits = (int8) calc.eval_auto (_args[2]);
+
+                                if (new_digits > 127)
+                                    new_digits = 127;
+                                if (new_digits < -128)
+                                    new_digits = -128;
+
+                                calc.decimal_digits = new_digits;
+                                print (@"'decimal-digits' set to '$new_digits'\n\n");
+                            } catch (Error e) {
+                                print ("the value must be a number\n\n");
+                            }
+                            break;
+
+                        }
+                        case "mode": {
+                            calc.mode =  (_args[2][0].tolower () == 'd') ? MODE.DEGREE : MODE.RADIAN;
+                            print (@"'mode' set to '$(calc.mode)'\n\n");
+                            break;
+                        }
+                        default:
+                            print (@"unknown setting '$(_args[1])'\n\n");
+                            break;
+                    }
+                }
+                 else {
+                    print ("missing value\n\n");
+                }
+
+            } else {
+                switch (_args[0]) {
+
+                case "round-result":
+                    print (@">>\tvalue:\t$(calc.round_result)\n>>\twheter the result should be rounded\n>>\tpossible values:\t['true', 'false']\n\n");
+                    break;
+                case "decimal-digits":
+                    print (@">>\tvalue:\t$(calc.decimal_digits)\n>>\tthe amount of decimal digits\n>>\tpossible values:\ta number between -128 and 127\n\n");
+                    break;
+                case "mode":
+                    print (@">>\tvalue:\t$(calc.mode)\n>>\tpossible values:\t['DEGREE', 'RADIAN']\n\n");
+                    break;
+                default:
+                    print (@"unknown setting '$(_args[0])'\n\n");
+                    break;
+
+                }
+            }
+        }
+
     };
 
     var con = Commands () {
@@ -141,6 +199,21 @@ int main (string[] args)
                 use_regex = true,
                 regex_match = "^rm [a-zA-Z]+$",
                 execute = delete
+            },
+            Command () {
+                name = "RADIAN",
+                description = "use radians",
+                execute = () => calc.mode = MODE.RADIAN
+            },
+             Command () {
+                name = "DEGREE",
+                description = "use degrees",
+                execute = () => calc.mode = MODE.DEGREE
+            },
+            Command () {
+                name = "settings",
+                description = "show or change settings",
+                execute = settings
             }
         }
     };
