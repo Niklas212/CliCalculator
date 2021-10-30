@@ -31,25 +31,34 @@ public enum MATCH_DATA_TYPE {
 public class Evaluation : GLib.Object
 {
     construct {
+
+        if (! DefaultValues.is_initialised) {
+            DefaultValues.init ();
+            DefaultValues.is_initialised = true;
+        }
+
         match_data = new MatchData[MATCH_DATA_TYPE.AMOUNT_TYPES];
 
-        variable = get_default_variables ();
+        variable = DefaultValues.new_variables;
+
         fun_extern = new UserFunc ();
 
-        fun_intern_deg = get_intern_functions (true);
-        fun_intern_rad = get_intern_functions (false);
+        fun_intern_deg = DefaultValues.get_intern_functions (DEGREE);
+        fun_intern_rad = DefaultValues.get_intern_functions (RADIAN);
 
         fun_intern = fun_intern_deg;
 
-        operator = get_default_operators ();
+        // using new_operators instead of operators is not required in this case
+        operator = DefaultValues.new_operators;
+
         init_match_data ();
     }
-
+/*
     public Evaluation ()
     {
 
     }
-
+*/
     public Evaluation.with_data (GenericArray<Part?> parts, GenericArray<uint?> seq) {
         var _section = new GenericArray <Part?> ();
         var _sequence = new GenericArray <uint?> ();

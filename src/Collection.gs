@@ -118,8 +118,9 @@ class Replaceable
 	amount_protected_variables: int
 
 	def add_variable(_key:string, _value:double, _override:bool = false) raises Calculation.CALC_ERROR
-		if _key in key or _key in get_default_variables ().key
-			if _key in get_default_variables ().key or not _override
+		//TODO: check if name is valid in Calcu_Logic
+		if _key in key or _key in DefaultValues.variables.key
+			if _key in DefaultValues.variables.key or not _override
 				raise new Calculation.CALC_ERROR.UNKNOWN(@"'$(_key)' is already defined")
 			if _override
 				for var i = 0 to (key.length - 1)
@@ -160,7 +161,7 @@ class Replaceable
 		else
 			raise new Calculation.CALC_ERROR.UNKNOWN(@"the variable '$_name' does not exist")
 
-struct Operation
+class Operation
 	key:array of string
 	priority:array of int
 	eval:array of fun
