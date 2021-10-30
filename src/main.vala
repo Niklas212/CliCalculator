@@ -5,7 +5,7 @@ int main (string[] args)
 
     var calc = new Evaluation ();
 
-    #if TEST
+    #if DEBUG
     try {
         assert (calc.eval_auto ("3+4*2") == 11);
         assert (calc.eval_auto ("(3+4)*2") == 14);
