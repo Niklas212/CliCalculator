@@ -152,7 +152,7 @@ int main (string[] args)
                     switch (_args[1]) {
                         case "round-result": {
                             calc.round_result = _args[2][0].tolower () == 't';
-                            print (@"'round-result' set to '$(calc.round_result)'\n\n");
+                            Color.print (@"'round-result' set to '$(calc.round_result)'\n\n", Color.cyan);
                             break;
                         }
                         case "decimal-digits": {
@@ -176,7 +176,7 @@ int main (string[] args)
                         }
                         case "mode": {
                             calc.mode =  (_args[2][0].tolower () == 'd') ? MODE.DEGREE : MODE.RADIAN;
-                            print (@"'mode' set to '$(calc.mode)'\n\n");
+                            Color.print (@"'mode' set to '$(calc.mode)'\n\n", Color.cyan);
                             break;
                         }
                         default:
