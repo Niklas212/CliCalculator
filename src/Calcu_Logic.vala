@@ -53,12 +53,7 @@ public class Evaluation : GLib.Object
 
         init_match_data ();
     }
-/*
-    public Evaluation ()
-    {
 
-    }
-*/
     public Evaluation.with_data (GenericArray<Part?> parts, GenericArray<uint?> seq) {
         var _section = new GenericArray <Part?> ();
         var _sequence = new GenericArray <uint?> ();
