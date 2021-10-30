@@ -5,6 +5,37 @@ int main (string[] args)
 
     var calc = new Evaluation ();
 
+    #if TEST
+    try {
+        assert (calc.eval_auto ("3+4*2") == 11);
+        assert (calc.eval_auto ("(3+4)*2") == 14);
+
+        assert (calc.eval_auto ("sin 90") == 1);
+        calc.mode = RADIAN;
+        assert (calc.eval_auto ("sin (p/2)") == 1);
+
+        assert (calc.eval_auto ("root (median (1, 3, 9), sum( 1 2 1+1 mean 2 4))") == 2);
+
+        assert (calc.create_variable ("x", "2(2+3)") == 10);
+        assert (calc.create_variable ("y", "1") == 1);
+        assert (calc.eval_auto ("x") == 10);
+        assert (calc.eval_auto ("xy") == 10);
+        assert (calc.create_variable ("xy", "-(1)") == -1);
+        assert (calc.eval_auto ("xy") == -1);
+        assert (calc.create_variable ("xy", "-2") == -2);
+        assert (calc.eval_auto ("xy") == -2);
+        calc.remove_variable ("xy");
+        assert (calc.eval_auto ("xy") == 10);
+
+        calc.create_function ("hypo", "sqrt(aa+bb)", {"a", "b"});
+        assert (calc.eval_auto ("hypo (3, 4)") == 5);
+
+        print ("all tests passed\n\n");
+    } catch (Error e) {
+        print (e.message);
+    }
+    #endif
+
     Execution eval = (input) => {
         try {
             print ( ">>\t" + calc.eval_auto (input).to_string () + "\n\n");
