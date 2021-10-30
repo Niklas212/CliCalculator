@@ -1,5 +1,24 @@
 using Calculation;
 
+public inline void _print (string text) {
+    print (text);
+}
+
+namespace Color {
+    public const string red = "\x1B[31m";
+    public const string green = "\x1B[32m";
+    public const string yellow = "\x1B[33m";
+    public const string blue = "\x1B[34m";
+    public const string magenta = "\x1B[35m";
+    public const string cyan = "\x1B[36m";
+    public const string white = "\x1B[37m";
+    public const string reset = "\x1B[0m";
+
+    public void print (string text, string color) {
+        _print (color + text + reset);
+    }
+}
+
 int main (string[] args)
 {
 
@@ -40,7 +59,7 @@ int main (string[] args)
         try {
             print ( ">>\t" + calc.eval_auto (input).to_string () + "\n\n");
         } catch (Error e) {
-            print (e.message + "\n\n");
+            Color.print (e.message + "\n\n", Color.red);
         }
     };
 
@@ -66,13 +85,13 @@ int main (string[] args)
         string key = parts[0].replace(" ", "");
         //checks if the name is used for a function
         if (calc.contains_symbol (parts[0].replace(" ", ""), false)) {
-            print(@"$(parts[0]) is already defined (function)\n\n");
+            Color.print(@"$(parts[0]) is already defined (function)\n\n", Color.yellow);
             return;
         }
 
         try {
             var value = calc.create_variable (key, parts[1], true);
-            print (@">> variable '$key' defined ($value)\n");
+            Color.print (@"variable '$key' defined ($value)\n", Color.green);
         } catch (Error e) {
             print(e.message + "\n\n");
         }
@@ -88,13 +107,13 @@ int main (string[] args)
         string[] paras = Regex.split_simple(",", (fst_parts[1].replace(" ", ""))[0:-1]);
         //checks if a variable is already named so
         if (calc.contains_symbol (name)) {
-            print(@"$name is already defined ($( (calc.contains_symbol (name, false)) ? "function" : "variable" ))\n\n");
+            Color.print (@"$name is already defined ($( (calc.contains_symbol (name, false)) ? "function" : "variable" ))\n\n", Color.yellow);
             return;
         }
 
         try {
             calc.create_function (name, expression, paras);
-            print(@">> function '$name' defined\n\n");
+            Color.print (@"function '$name' defined\n\n", Color.green);
         } catch (Error e) {
             print(e.message + "\n\n");
         }
@@ -105,16 +124,16 @@ int main (string[] args)
         try {
             if (name in calc.variable.key) {
                 calc.remove_variable(name);
-                print(@"variable '$name' deleted\n\n");
+                Color.print (@"variable '$name' deleted\n\n", Color.magenta);
             }
             else if (name in calc.fun_extern.key) {
                 calc.remove_function(name);
-                print(@"function '$name' deleted\n\n");
+                Color.print (@"function '$name' deleted\n\n", Color.magenta);
             }
             else
                 throw new CALC_ERROR.UNKNOWN(@"'$name' is not defined");
         } catch (Error e) {
-            print(e.message + "\n\n");
+            Color.print (e.message + "\n\n", Color.yellow);
         }
     };
 
@@ -124,7 +143,7 @@ int main (string[] args)
 
 
         if (arg.chomp () == "")
-            print (@">>\tround-result:\t$(calc.round_result)\n>>\tdecimal-digits:\t$(calc.decimal_digits)\n>>\tmode:\t\t$(calc.mode)\n\n>>\ttype 'settings [setting]' to get details about a setting\n>>\ttype 'settings set [setting] [value]' to change a setting\n\n");
+            print (@"\tround-result:\t$(calc.round_result)\n\tdecimal-digits:\t$(calc.decimal_digits)\n\tmode:\t\t$(calc.mode)\n\n\ttype 'settings [setting]' to get details about a setting\n\ttype 'settings set [setting] [value]' to change a setting\n\n");
         else {
             string[] _args = arg.chomp ().chug ().split (" ");
 
@@ -148,9 +167,9 @@ int main (string[] args)
                                     new_digits = -128;
 
                                 calc.decimal_digits = new_digits;
-                                print (@"'decimal-digits' set to '$new_digits'\n\n");
+                                Color.print (@"'decimal-digits' set to '$new_digits'\n\n", Color.cyan);
                             } catch (Error e) {
-                                print ("the value must be a number\n\n");
+                                Color.print ("the value must be a number\n\n", Color.yellow);
                             }
                             break;
 
@@ -161,28 +180,28 @@ int main (string[] args)
                             break;
                         }
                         default:
-                            print (@"unknown setting '$(_args[1])'\n\n");
+                            Color.print (@"unknown setting '$(_args[1])'\n\n", Color.yellow);
                             break;
                     }
                 }
                  else {
-                    print ("missing value\n\n");
+                    Color.print ("missing value\n\n", Color.yellow);
                 }
 
             } else {
                 switch (_args[0]) {
 
                 case "round-result":
-                    print (@">>\tvalue:\t$(calc.round_result)\n>>\twheter the result should be rounded\n>>\tpossible values:\t['true', 'false']\n\n");
+                    print (@"\tvalue:\t$(calc.round_result)\n\twheter the result should be rounded\n\tpossible values:\t['true', 'false']\n\n");
                     break;
                 case "decimal-digits":
-                    print (@">>\tvalue:\t$(calc.decimal_digits)\n>>\tthe amount of decimal digits\n>>\tpossible values:\ta number between -128 and 127\n\n");
+                    print (@"\tvalue:\t$(calc.decimal_digits)\n\tthe amount of decimal digits\n\tpossible values:\ta number between -128 and 127\n\n");
                     break;
                 case "mode":
-                    print (@">>\tvalue:\t$(calc.mode)\n>>\tpossible values:\t['DEGREE', 'RADIAN']\n\n");
+                    print (@"\tvalue:\t$(calc.mode)\n\tpossible values:\t['DEGREE', 'RADIAN']\n\n");
                     break;
                 default:
-                    print (@"unknown setting '$(_args[0])'\n\n");
+                    Color.print (@"unknown setting '$(_args[0])'\n\n", Color.yellow);
                     break;
 
                 }
