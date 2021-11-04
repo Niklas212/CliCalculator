@@ -82,16 +82,16 @@ public class Evaluation : GLib.Object
         }
     }
 
+    public string input {get; set; default = "";}
+	public double? result {get; private set; default = null;}
+	public string[] error_info = new string[3];
+
     public int8 decimal_digits {get; set; default = 4;}
     public bool round_result {get; set; default = false;}
 
 	private PreparePart[] parts = {};
-	public string input {get; set; default = "";}
-	public double? result {get; private set; default = null;}
 	private GenericArray <Part?> section = new GenericArray <Part?> ();
 	public GenericArray <uint?> sequence = new GenericArray <uint?> ();
-
-	public int bracket {get; set; default = 5;}
 
 	public Operation operator {get; set;}
 
@@ -102,6 +102,7 @@ public class Evaluation : GLib.Object
     public UserFunc fun_extern {get; set;}
     public Replaceable variable {get; set;}
 
+    public int bracket {get; set; default = 5;}
 	public string[] control {get; set; default={"(", ")", ",", " "};}
 
 	private MatchData[] match_data;
@@ -192,13 +193,19 @@ public class Evaluation : GLib.Object
                    if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
                         parts += PreparePart(){value="0", type=Type.NUMBER};
 
-			        parts+=ap;
+			        parts += ap;
 			        i += ap.length;
 
 			        can_negative=(ap.type==Type.OPERATOR||(ap.type==Type.CONTROL&&ap.value!=")"));
 			        check_mul=(ap.type==Type.NUMBER||ap.type==Type.VARIABLE||ap.value==")");
 			    }
 			else {
+			    error_info = {
+			        input [0 : i],
+			        input [i : i + 1],
+			        input [i + 1 : input.length]
+			    };
+
 			    throw new CALC_ERROR.INVALID_SYMBOL (@"the symbol `$(input[i:i+1])` is not known");
 			}
 
@@ -271,7 +278,7 @@ public class Evaluation : GLib.Object
 					    bracket_value += bracket;
                         if (section.length >= 1) {
 					        section.get (section.length - 1).bracket_value ++;
-					        section.get (section.length - 1).modifier = OPENING_BRACKET;
+					        section.get (section.length - 1).modifier |= OPENING_BRACKET;
 					    }
 					}
 					break;
@@ -282,18 +289,18 @@ public class Evaluation : GLib.Object
 			}
 		}
 
-	if(bracket_value!=0) {
-	    if(bracket_value>0) {
-            throw new CALC_ERROR.MISSING_CLOSING_BRACKET(@" `$(bracket_value/bracket)` closing $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
+	    if(bracket_value!=0) {
+	        if(bracket_value>0) {
+                throw new CALC_ERROR.MISSING_CLOSING_BRACKET(@" '$(bracket_value/bracket)' closing $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
+	        }
+	        else {
+	            bracket_value*=-1;
+                throw new CALC_ERROR.MISSING_OPENING_BRACKET(@" '$(bracket_value/bracket)' opening $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
+	        }
 	    }
-	    else {
-	        bracket_value*=-1;
-            throw new CALC_ERROR.MISSING_OPENING_BRACKET(@" `$(bracket_value/bracket)` opening $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
-	    }
-	}
 
-	if (section.length < 1)
-	    throw new CALC_ERROR.MISSING_ARGUMENT ("");
+	    if (section.length < 1)
+	        throw new CALC_ERROR.MISSING_ARGUMENT ("");
 
 	}
 
@@ -321,7 +328,7 @@ public class Evaluation : GLib.Object
 			    check_scope = true;
 			    bracket_scope = part.bracket_value;
 
-			    if (! (part.modifier == OPENING_BRACKET)) {
+			    if (! (OPENING_BRACKET in part.modifier)) {
 			        bracket_scope ++;
 			    }
 			    //bracket_scope += (int) (OPENING_BRACKET in part.modifier);
@@ -367,8 +374,10 @@ public class Evaluation : GLib.Object
 			});
 		}
 
-		if (section.length > 1)
-		    throw new CALC_ERROR.REMAINING_ARGUMENT(@"$(section.length - 1) $( (section.length > 2) ? "arguments are" : "argument is" ) remaining");
+		if (section.length > 1) {
+		    	throw new CALC_ERROR.REMAINING_ARGUMENT(@"$(section.length - 1) $( (section.length > 2) ? "arguments are" : "argument is" ) remaining");
+		}
+
 		result = section.get(0).value ?? 0 / 0;
 
 		if (round_result) {
@@ -438,7 +447,7 @@ public class Evaluation : GLib.Object
 			    check_scope = true;
 			    bracket_scope = part.bracket_value;
 
-			    if (! (part.modifier == OPENING_BRACKET)) {
+			    if (! (OPENING_BRACKET in part.modifier)) {
 			        bracket_scope ++;
 			    }
 			}
@@ -467,7 +476,7 @@ public class Evaluation : GLib.Object
 				}
 			}
 
-			section.set (ind - part.eval.arg_left, Part() {
+			section.set (ind - part.eval.arg_left, Part () {
 				value = part.eval.eval(arg, part.data),
 				has_value = true,
 				bracket_value = bracket_scope

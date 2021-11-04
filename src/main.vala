@@ -48,6 +48,7 @@ int main (string[] args)
 
         calc.create_function ("hypo", "sqrt(aa+bb)", {"a", "b"});
         assert (calc.eval_auto ("hypo (3, 4)") == 5);
+        calc.remove_function ("hypo");
 
         print ("all tests passed\n\n");
     } catch (Error e) {
@@ -59,6 +60,8 @@ int main (string[] args)
         try {
             print ( ">>\t" + calc.eval_auto (input).to_string () + "\n\n");
         } catch (Error e) {
+            if (e is CALC_ERROR.INVALID_SYMBOL /*|| e is CALC_ERROR.REMAINING_ARGUMENT*/)
+                print ("\x1b[1F\x1b[2K" + calc.error_info[0] + Color.red + calc.error_info[1] + Color.reset + calc.error_info[2] + "\n");
             Color.print (e.message + "\n\n", Color.red);
         }
     };

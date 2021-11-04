@@ -9,6 +9,7 @@ class abstract Data: Object
 			return part
 
 
+[Flags]
 enum Modifier
 	OPENING_BRACKET = 1
 
