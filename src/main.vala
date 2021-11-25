@@ -52,7 +52,7 @@ int main (string[] args)
 
         print ("all tests passed\n\n");
     } catch (Error e) {
-        print (e.message);
+        print (e.message + "\n");
     }
     #endif
 
@@ -253,7 +253,7 @@ int main (string[] args)
         }
     };
 
-    stdout.printf("avaible operators:`+`, `-`, `*`, `/`, `^`, `%`, `E`, `!`\navaible constants:`p`/`pi`, `e`\navaible functions:`sqrt`,`root`(x,y), `mod`, `sin`, `cos`, `tan`, `sinh`,`cosh`,`tanh`\ntype 'help'\n\n");
+    stdout.printf("available operators:`+`, `-`, `*`, `/`, `^`, `%`, `E`, `!`\navailable constants:`p`/`pi`, `e`\navailable functions:`sqrt`,`root`(x,y), `mod`, `sin`, `cos`, `tan`, `sinh`,`cosh`,`tanh`\ntype 'help'\n\n");
     run (con);
 
     return 0;

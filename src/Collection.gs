@@ -30,8 +30,35 @@ struct config
 	//custom_functions:CustomFunctions
 */
 struct MatchData
-	key: array of string
+	children: array of ChildData
 	type: Type
+	max_length: int
+
+	construct @init (_type: Type, keys: array of string)
+		type = _type
+		reevaluate (keys)
+
+	def reevaluate (keys: array of string)
+		children = new array of ChildData [keys.length]
+
+
+		for var i = 0 to (keys.length - 1)
+			children[i] = ChildData () {key = keys[i], virtual_index = i}
+
+			if keys[i].length > max_length
+				max_length = keys[i].length
+
+		for var i = 0 to (children.length - 2)
+			for var j = 0 to (children.length - 2)
+				if (children[j].key.length < children[j + 1].key.length)
+					var tmp = children[j + 1]
+					children[j + 1] = children[j]
+					children[j] = tmp
+
+
+struct ChildData
+	key: string
+	virtual_index: int
 
 struct PreparePart
 	value:string
@@ -295,7 +322,7 @@ def median (v: array of double): double
 
 
 
-def next_multi_match (input:string, data:array of MatchData): PreparePart
+def next_multi_match (input:string, string_start:int, data:array of MatchData): PreparePart
 	max_match_type_index:int = -1
 	max_match_index:int = -1
 	max_match_length:int = -1
@@ -306,19 +333,24 @@ def next_multi_match (input:string, data:array of MatchData): PreparePart
 	for d in data
 		i ++
 		j = -1
-		for e in d.key
+
+		if max_match_length > d.max_length
+			continue
+
+		for e in d.children
 			j ++
-			if (e.length <= input.length && e.length > max_match_length && input[0:e.length] == e)
+			if (e.key.length <= (input.length - string_start) && e.key.length > max_match_length && input [string_start : string_start + e.key.length] == e.key)
 				max_match_type_index = i
 				max_match_index = j
-				max_match_length = e.length
+				max_match_length = e.key.length
+				break
 
 	if (max_match_length > 0)
 		return PreparePart() {
-			value = data[max_match_type_index].key[max_match_index],
+			value = data[max_match_type_index].children[max_match_index].key,
 			type = data[max_match_type_index].type,
-			length = data[max_match_type_index].key[max_match_index].length,
-			index = max_match_index
+			length = data[max_match_type_index].children[max_match_index].key.length,
+			index = data[max_match_type_index].children[max_match_index].virtual_index
 		}
 	else
 		return PreparePart() {
@@ -326,22 +358,22 @@ def next_multi_match (input:string, data:array of MatchData): PreparePart
 		}
 
 
-def next_real_match (input:string, data:array of MatchData, can_negative:bool):PreparePart
+def next_real_match (input:string, string_start:int, data:array of MatchData, can_negative:bool):PreparePart
 	can_number:bool = false
 	is_decimal:bool = false
 	is_number:bool = false
 
-	if (can_negative && (input[0] == '-' || input[0] == '+'))
+	if (can_negative && (input[string_start] == '-' || input[string_start] == '+'))
 		can_number = true
-	else if input[0].isdigit ()
+	else if input[string_start].isdigit ()
 		can_number = true
 		is_number = true
-	else if input[0] == '.'
+	else if input[string_start] == '.'
 		can_number = true
 		is_decimal = true
 
 	if can_number
-		var i = 0
+		var i = string_start
 		while (++i <= input.length)
 			if input[i].isdigit ()
 				is_number = true
@@ -350,11 +382,10 @@ def next_real_match (input:string, data:array of MatchData, can_negative:bool):P
 			else
 				if is_number
 					return PreparePart () {
-						value = input[0:i],
+						value = input[string_start:i],
 						type = NUMBER,
-						length = i
+						length = i - string_start
 					}
 				else do break
-
-	return next_multi_match (input, data)
+	return next_multi_match (input, string_start, data)
 

@@ -113,7 +113,7 @@ public class Evaluation : GLib.Object
 
     public void add_variable (string key, double value, bool override = true) throws CALC_ERROR {
         variable.add_variable (key, value, override);
-        match_data[MATCH_DATA_TYPE.VARIABLE].key = variable.key;
+        match_data[MATCH_DATA_TYPE.VARIABLE].reevaluate (variable.key);
     }
 
     public double create_variable (string key, string value, bool override = true) throws CALC_ERROR{
@@ -124,12 +124,12 @@ public class Evaluation : GLib.Object
 
     public void remove_variable (string key) throws CALC_ERROR {
         variable.remove_variable (key);
-        match_data[MATCH_DATA_TYPE.VARIABLE].key = variable.key;
+        match_data[MATCH_DATA_TYPE.VARIABLE].reevaluate (variable.key);
     }
 
     public void add_function (string key, int arg_right, UserFuncData data, bool override = false) throws CALC_ERROR {
         fun_extern.add_function (key, arg_right, data, override);
-        match_data[MATCH_DATA_TYPE.FUN_EXTERN].key = fun_extern.key;
+        match_data[MATCH_DATA_TYPE.FUN_EXTERN].reevaluate (fun_extern.key);
     }
 
     public void create_function (string key, string expression, string[] variables) throws CALC_ERROR {
@@ -138,7 +138,7 @@ public class Evaluation : GLib.Object
 
     public void remove_function (string key) throws CALC_ERROR {
         fun_extern.remove_function (key);
-        match_data[MATCH_DATA_TYPE.FUN_EXTERN].key = fun_extern.key;
+        match_data[MATCH_DATA_TYPE.FUN_EXTERN].reevaluate (fun_extern.key);
     }
 
     public void clear(){
@@ -148,12 +148,20 @@ public class Evaluation : GLib.Object
     }
 
     public void init_match_data () {
-        match_data = {
+        /*match_data = {
 		    MatchData () {key = operator.key, type = OPERATOR},
 		    MatchData () {key = fun_intern.key, type = EXPRESSION},
 		    MatchData () {key = fun_extern.key, type = FUNCTION},
 		    MatchData () {key = control, type = CONTROL},
 		    MatchData () {key = variable.key, type = VARIABLE}
+		};*/
+
+		match_data = {
+		    MatchData.init (OPERATOR, operator.key),
+		    MatchData.init (EXPRESSION, fun_intern.key),
+		    MatchData.init (FUNCTION, fun_extern.key),
+		    MatchData.init (CONTROL, control),
+		    MatchData.init (VARIABLE, variable.key)
 		};
     }
 
@@ -183,11 +191,11 @@ public class Evaluation : GLib.Object
         int i = 0;
 		while (i < input.length) {
 
-            ap = next_real_match (input[i:input.length], match_data, can_negative);
+            ap = next_real_match (input, i, match_data, can_negative);
 
 			if(ap.length>0)
 			    {
-                    if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
+                   if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
                         parts+=PreparePart(){value="*", type=Type.OPERATOR, length=1, index=2};
 
                    if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
@@ -205,7 +213,6 @@ public class Evaluation : GLib.Object
 			        input [i : i + 1],
 			        input [i + 1 : input.length]
 			    };
-
 			    throw new CALC_ERROR.INVALID_SYMBOL (@"the symbol `$(input[i:i+1])` is not known");
 			}
 
