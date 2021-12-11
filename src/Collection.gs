@@ -222,7 +222,7 @@ class UserFuncData: Data
 			raise e
 
 	def generate_data(expression:string, variables: array of string, test:bool = true) raises Calculation.CALC_ERROR
-		var e = new Calculation.Evaluation()
+		var e = new Calculation.Calculator()
 		e.input = expression
 
 		var amount_default_vars = e.variable.key.length
@@ -265,7 +265,7 @@ class UserFuncData: Data
 		//test generated data
 		if test
 			try
-				var test_e = new Calculation.Evaluation.with_data (e.get_section (), e.get_sequence ())
+				var test_e = new Calculation.Calculator.with_data (e.get_section (), e.get_sequence ())
 				test_e.set_parts (e.get_parts ())
 				test_e.eval()
 			except er: Calculation.CALC_ERROR

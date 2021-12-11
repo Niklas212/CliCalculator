@@ -22,7 +22,7 @@ namespace Color {
 int main (string[] args)
 {
 
-    var calc = new Evaluation ();
+    var calc = new Calculator ();
 
     #if DEBUG
     try {
