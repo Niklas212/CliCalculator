@@ -50,9 +50,9 @@ int main (string[] args)
         assert (calc.eval_auto ("hypo (3, 4)") == 5);
         calc.remove_function ("hypo");
 
-        print ("all tests passed\n\n");
+        Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
-        print (e.message + "\n");
+        Color.print (e.message + "\n", Color.red);
     }
     #endif
 

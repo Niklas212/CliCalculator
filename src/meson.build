@@ -3,6 +3,7 @@ clicalculator_sources = [
   'Calcu_Logic.vala',
   'Collection.gs',
   'Default_Values.vala',
+  'LinkedList.vala',
 ]
 
 clicalculator_deps = [

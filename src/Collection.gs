@@ -21,14 +21,7 @@ enum Type
 	EXPRESSION
 	CONTROL
 	OPERATOR
-/*
-struct config
-	use_degrees:bool
-	round_decimal:bool
-	decimal_digit:int
-	//custom_variable:Replaceable
-	//custom_functions:CustomFunctions
-*/
+
 struct MatchData
 	children: array of ChildData
 	type: Type
@@ -122,14 +115,6 @@ class UserFunc
 
 		return index
 
-/*
-struct UserFunc
-	key: array of string
-	eval:Eval
-	arg_right: array of int
-	data:array of UserFuncData
-*/
-
 struct Part
 	value: double?
 	eval: fun
@@ -191,7 +176,7 @@ class Replaceable
 
 class Operation
 	key:array of string
-	priority:array of int
+	priority:array of uint
 	eval:array of fun
 
 class Func
@@ -212,7 +197,7 @@ struct fun
 class UserFuncData: Data
 	part_index: array of int
 	argument_index: array of int
-	sequence: GenericArray of uint?
+	priorities: LinkedList of uint
 	parts: GenericArray of Part?
 
 	construct with_data(expression:string, variables: array of string) raises Calculation.CALC_ERROR
@@ -253,11 +238,11 @@ class UserFuncData: Data
 			i++
 		this.part_index = part_ind
 		this.argument_index = argument_ind
-		//set sequence && parts
+		//set priorities && parts
 		try
 			e.prepare()
 			this.parts = e.get_section()
-			this.sequence = e.get_sequence()
+			this.priorities = e.get_priorities()
 		except er: Calculation.CALC_ERROR
 			e.clear()
 			raise er
@@ -265,7 +250,7 @@ class UserFuncData: Data
 		//test generated data
 		if test
 			try
-				var test_e = new Calculation.Calculator.with_data (e.get_section (), e.get_sequence ())
+				var test_e = new Calculation.Calculator.with_data (e.get_section (), e.get_priorities ())
 				test_e.set_parts (e.get_parts ())
 				test_e.eval()
 			except er: Calculation.CALC_ERROR

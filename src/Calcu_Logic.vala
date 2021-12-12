@@ -54,15 +54,16 @@ public class Calculator : GLib.Object
         init_match_data ();
     }
 
-    public Calculator.with_data (GenericArray<Part?> parts, GenericArray<uint?> seq) {
+    public Calculator.with_data (GenericArray<Part?> parts, LinkedList <uint> prio) {
         var _section = new GenericArray <Part?> ();
-        var _sequence = new GenericArray <uint?> ();
+        var _priorities = new LinkedList <uint> ();
 
         parts.foreach( (x) => _section.add(x) );
-        seq.foreach( (x) => _sequence.add(x) );
+        _priorities = prio.copy ();
+
 
         this.section = _section;
-        this.sequence = _sequence;
+        this.priorities = _priorities;
     }
 
     private MODE _mode;
@@ -91,13 +92,13 @@ public class Calculator : GLib.Object
 
 	private PreparePart[] parts = {};
 	private GenericArray <Part?> section = new GenericArray <Part?> ();
-	public GenericArray <uint?> sequence = new GenericArray <uint?> ();
+	public LinkedList <uint> priorities = new LinkedList <uint> ();
 
 	public Operation operator {get; set;}
 
     private Func fun_intern_deg;
     private Func fun_intern_rad;
-    public Func fun_intern {get; set; }
+    public Func fun_intern {get; private set;}
 
     public UserFunc fun_extern {get; set;}
     public Replaceable variable {get; set;}
@@ -141,21 +142,13 @@ public class Calculator : GLib.Object
         match_data[MATCH_DATA_TYPE.FUN_EXTERN].reevaluate (fun_extern.key);
     }
 
-    public void clear(){
-        parts={};
-        section.remove_range(0,section.length);
-        sequence.remove_range (0, sequence.length);
+    public void clear () {
+        parts = {};
+        section.remove_range (0, section.length);
+        priorities.clear ();
     }
 
     public void init_match_data () {
-        /*match_data = {
-		    MatchData () {key = operator.key, type = OPERATOR},
-		    MatchData () {key = fun_intern.key, type = EXPRESSION},
-		    MatchData () {key = fun_extern.key, type = FUNCTION},
-		    MatchData () {key = control, type = CONTROL},
-		    MatchData () {key = variable.key, type = VARIABLE}
-		};*/
-
 		match_data = {
 		    MatchData.init (OPERATOR, operator.key),
 		    MatchData.init (EXPRESSION, fun_intern.key),
@@ -173,8 +166,8 @@ public class Calculator : GLib.Object
         return this.section;
     }
 
-    public GenericArray<uint?> get_sequence() {
-        return this.sequence;
+    public LinkedList <uint> get_priorities() {
+        return this.priorities;
     }
 
     public void set_parts (PreparePart[] parts) {
@@ -250,7 +243,8 @@ public class Calculator : GLib.Object
 						eval = operator.eval[part.index],
 						priority = bracket_value + operator.priority[part.index]
 					});
-					sequence.add (bracket_value + operator.priority[part.index]);
+					uint priority = bracket_value + operator.priority[part.index];
+					priorities.insert_sorted (priority, (LinkedList.SortingFunction <uint>) compare_uint);
 
 					break;
 				}
@@ -260,7 +254,7 @@ public class Calculator : GLib.Object
 				        eval = fun_intern.eval[part.index],
 				        priority = 4 + bracket_value
 				    });
-                    sequence.add (bracket_value + 4);
+                    priorities.insert_sorted (bracket_value + 4, (LinkedList.SortingFunction <uint>) compare_uint);
 				    break;
 				}
 				case Type.FUNCTION: {
@@ -271,7 +265,7 @@ public class Calculator : GLib.Object
 				        data  = (fun_extern.data[part.index])
 				    });
 				    //TODO pass config
-				    sequence.add (bracket_value + 4);
+				    priorities.insert_sorted (bracket_value + 4, (LinkedList.SortingFunction <uint>) compare_uint);
 				    break;
 				}
 				case Type.CONTROL: {
@@ -296,12 +290,12 @@ public class Calculator : GLib.Object
 			}
 		}
 
-	    if(bracket_value!=0) {
-	        if(bracket_value>0) {
+	    if (bracket_value != 0) {
+	        if (bracket_value > 0) {
                 throw new CALC_ERROR.MISSING_CLOSING_BRACKET(@" '$(bracket_value/bracket)' closing $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
 	        }
 	        else {
-	            bracket_value*=-1;
+	            bracket_value *= -1;
                 throw new CALC_ERROR.MISSING_OPENING_BRACKET(@" '$(bracket_value/bracket)' opening $((bracket_value/bracket==1)?"bracket is":"brackets are") missing");
 	        }
 	    }
@@ -314,15 +308,12 @@ public class Calculator : GLib.Object
 	public void eval() throws CALC_ERROR
 	{
 
-        sequence.sort ( (a, b) => (int) (a < b) );
-
-
-		for (int i = 0; i < sequence.length; i++)
+		foreach (var priority in priorities)
 		{
 			var ind = -1;
 
 			for (int j = 0; j < section.length; j++)
-			    if (section.get(j).has_value == false && section.get(j).priority == sequence.get(i)) {
+			    if (section.get(j).has_value == false && section.get(j).priority == priority) {
 			        ind = j;
 			        break;
 			    }
@@ -413,35 +404,33 @@ public class Calculator : GLib.Object
             print (@"times\t$(msec1 - msec0)\t$(msec2 - msec1)\t$(msec3 - msec2)\n");
             #endif
         }
-        catch(Error e) {
-            this.clear();
+        catch (Error e) {
+            this.clear ();
             throw e;
         }
-        this.clear();
+        this.clear ();
         return this.result;
     }
 
     public static double eval_trusted_function (double[] value, UserFuncData data) {
 
-        var sequence = new GenericArray <uint?> (data.parts.length);
-        var section = new GenericArray <Part?> (data.sequence.length);
+        var priorities = new LinkedList <uint> ();
+        var section = new GenericArray <Part?> (data.parts.length);
 
         data.parts.foreach ((part) => section.add (part));
-        data.sequence.foreach ((seq) => sequence.add (seq));
+        priorities = data.priorities.copy ();
 
         // set parameters
         for (int i = 0; i < data.part_index.length; i++) {
             section[data.part_index[i]].value = value[data.argument_index[i]];
         }
 
-        sequence.sort ( (a, b) => (int) (a < b) );
-
-		for (int i = 0; i < sequence.length; i++)
+		foreach (var priority in priorities)
 		{
 			var ind = -1;
 
 			for (int j = 0; j < section.length; j++)
-			    if (section.get(j).has_value == false && section.get(j).priority == sequence.get(i)) {
+			    if (section.get(j).has_value == false && section.get(j).priority == priority) {
 			        ind = j;
 			        break;
 			    }
@@ -509,6 +498,10 @@ public class Calculator : GLib.Object
 
         }
 
+    }
+
+    public static bool compare_uint (uint a, uint b) {
+        return a < b;
     }
 
 }
