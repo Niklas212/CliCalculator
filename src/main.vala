@@ -159,20 +159,36 @@ int main (string[] args)
                             break;
                         }
                         case "decimal-digits": {
-                            int8 new_digits = 0;
+                            int new_digits = 0;
+
+                            var calc_round_result = calc.round_result;
+                            var calc_decimal_digits = calc.decimal_digits;
+                            calc.round_result = true;
+                            calc.decimal_digits = 0;
 
                             try {
-                                new_digits = (int8) calc.eval_auto (_args[2]);
+                                new_digits = (int) calc.eval_auto (_args[2]);
 
                                 if (new_digits > 127)
                                     new_digits = 127;
                                 if (new_digits < -128)
                                     new_digits = -128;
 
-                                calc.decimal_digits = new_digits;
-                                Color.print (@"'decimal-digits' set to '$new_digits'\n\n", Color.cyan);
+                                calc_decimal_digits = (int8) new_digits;
+                                Color.print (@"'decimal-digits' set to '$new_digits'\n", Color.cyan);
+
+                                if (! calc_round_result) {
+                                    calc_round_result = true;
+                                    Color.print (@"\r'round-result' set to '$(calc.round_result)'\n\n", Color.cyan);
+                                } else {
+                                    print ("\n");
+                                }
+
                             } catch (Error e) {
                                 Color.print ("the value must be a number\n\n", Color.yellow);
+                            } finally {
+                                calc.round_result = calc_round_result;
+                                calc.decimal_digits = calc_decimal_digits;
                             }
                             break;
 
