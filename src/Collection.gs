@@ -1,6 +1,7 @@
 [indent=0]
 uses GLib.Math
 
+[CCode (has_target = false)]
 delegate Eval(value:array of double, data: Data?):double
 
 class abstract Data: Object
