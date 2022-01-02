@@ -16,6 +16,8 @@ public class DefaultValues {
         trigonometric_functions_rad = new_trigonometric_functions_rad;
         variables = new_variables;
         operators = new_operators;
+
+        is_initialised = true;
     }
 
     public static owned Func new_basic_functions {
@@ -28,7 +30,7 @@ public class DefaultValues {
                     fun () {eval = (value) => mod (value[0], value[1]), arg_left = 0, arg_right = 2},
                     fun (2) {eval = (value) => sum (value), arg_left = 0, arg_right = -1},
                     fun (1) {eval = (value) => mean (value), arg_left = 0, arg_right = -1},
-                    fun (2) {eval = (value) => median (value), arg_left = 0, arg_right = -1}
+                    fun (1) {eval = (value) => median (value), arg_left = 0, arg_right = -1}
                 }
             };
         }

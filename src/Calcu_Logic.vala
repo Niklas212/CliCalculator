@@ -34,7 +34,7 @@ public class Calculator : GLib.Object
 
         if (! DefaultValues.is_initialised) {
             DefaultValues.init ();
-            DefaultValues.is_initialised = true;
+            //DefaultValues.is_initialised = true;
         }
 
         match_data = new MatchData[MATCH_DATA_TYPE.AMOUNT_TYPES];
@@ -54,11 +54,12 @@ public class Calculator : GLib.Object
         init_match_data ();
     }
 
-    public Calculator.with_data (GenericArray<Part?> parts, LinkedList <uint> prio) {
-        var _section = new GenericArray <Part?> ();
+    public Calculator.with_data (LinkedList <Part?> parts, LinkedList <uint> prio) {
+        var _section = new LinkedList <Part?> ();
         var _priorities = new LinkedList <uint> ();
 
-        parts.foreach( (x) => _section.add(x) );
+        //parts.foreach( (x) => _section.add(x) );
+        _section = parts.copy ();
         _priorities = prio.copy ();
 
 
@@ -90,8 +91,8 @@ public class Calculator : GLib.Object
     public int8 decimal_digits {get; set; default = 4;}
     public bool round_result {get; set; default = false;}
 
-	private PreparePart[] parts = {};
-	private GenericArray <Part?> section = new GenericArray <Part?> ();
+	private LinkedList <Token?> tokens = new LinkedList <Token?> ();
+	private LinkedList <Part?> section = new LinkedList <Part?> ();
 	public LinkedList <uint> priorities = new LinkedList <uint> ();
 
 	public Operation operator {get; set;}
@@ -129,6 +130,9 @@ public class Calculator : GLib.Object
     }
 
     public void add_function (string key, int arg_right, UserFuncData data, bool override = false) throws CALC_ERROR {
+
+        print ("adding function ");
+
         fun_extern.add_function (key, arg_right, data, override);
         match_data[MATCH_DATA_TYPE.FUN_EXTERN].reevaluate (fun_extern.key);
     }
@@ -143,8 +147,10 @@ public class Calculator : GLib.Object
     }
 
     public void clear () {
-        parts = {};
-        section.remove_range (0, section.length);
+        //tokens = {};
+        //section.remove_range (0, section.length);
+        tokens.clear ();
+        section.clear ();
         priorities.clear ();
     }
 
@@ -158,11 +164,12 @@ public class Calculator : GLib.Object
 		};
     }
 
-    public PreparePart[] get_parts() {
-        return this.parts;
+
+    public LinkedList <Token?> get_tokens () {
+        return tokens;
     }
 
-    public GenericArray<Part?> get_section() {
+    public LinkedList <Part?> get_section() {
         return this.section;
     }
 
@@ -170,8 +177,9 @@ public class Calculator : GLib.Object
         return this.priorities;
     }
 
-    public void set_parts (PreparePart[] parts) {
-        this.parts = parts;
+
+    public void set_tokens (LinkedList <Token?> tokens) {
+        this.tokens = tokens;
     }
 
 	public void split() throws CALC_ERROR
@@ -179,7 +187,7 @@ public class Calculator : GLib.Object
         bool can_negative=true;
         bool check_mul=false;
 
-		PreparePart ap = {};
+		Token ap = {};
 
         int i = 0;
 		while (i < input.length) {
@@ -189,12 +197,12 @@ public class Calculator : GLib.Object
 			if(ap.length>0)
 			    {
                    if(check_mul&&(!(ap.type==Type.OPERATOR||ap.type==Type.NUMBER||(ap.type==Type.CONTROL&&!(ap.value=="(")))))
-                        parts+=PreparePart(){value="*", type=Type.OPERATOR, length=1, index=2};
+                        tokens.append (Token(){value="*", type=Type.OPERATOR, length=1, index=2});
 
-                   if (ap.value == "-" && (parts.length == 0 || (parts[parts.length - 1].type == Type.CONTROL && parts[parts.length - 1].value != ")")))
-                        parts += PreparePart(){value="0", type=Type.NUMBER};
+                   if (ap.value == "-" && (tokens.length == 0 || (tokens[tokens.length - 1].type == Type.CONTROL && tokens[tokens.length - 1].value != ")")))
+                        tokens.append (Token(){value="0", type=Type.NUMBER});
 
-			        parts += ap;
+			        tokens.append (ap);
 			        i += ap.length;
 
 			        can_negative=(ap.type==Type.OPERATOR||(ap.type==Type.CONTROL&&ap.value!=")"));
@@ -212,57 +220,56 @@ public class Calculator : GLib.Object
 		}
 	}
 
-	public void prepare() throws CALC_ERROR
+	public void prepare () throws CALC_ERROR
 	{
 		int bracket_value = 0;
 		int invisible_parts = 0;
 
-		foreach (PreparePart part in parts)
+		foreach (Token token in tokens)
 		{
-			switch (part.type)
+			switch (token.type)
 			{
 				case Type.VARIABLE: {
-					section.add (Part () {
-						value = variable.value[part.index],
+					section.append (Part () {
+						value = variable.value[token.index],
 						has_value = true
 					});
 
 					break;
 				}
 				case Type.NUMBER: {
-					section.add (Part () {
-						value = double.parse (part.value),
+					section.append (Part () {
+						value = double.parse (token.value),
 						has_value = true
 					});
 
 					break;
 				}
 				case Type.OPERATOR: {
-					section.add (Part () {
+					section.append (Part () {
 					    index = section.length + invisible_parts,
-						eval = operator.eval[part.index],
-						priority = bracket_value + operator.priority[part.index]
+						eval = operator.eval[token.index],
+						priority = bracket_value + operator.priority[token.index]
 					});
-					uint priority = bracket_value + operator.priority[part.index];
-					priorities.insert_sorted (priority, (LinkedList.SortingFunction <uint>) compare_uint);
+					priorities.insert_sorted (bracket_value + operator.priority[token.index], (LinkedList.SortingFunction <uint>) compare_uint);
 
 					break;
 				}
 				case Type.EXPRESSION: {
-				    section.add (Part () {
+				    section.append (Part () {
 				        index = section.length + invisible_parts,
-				        eval = fun_intern.eval[part.index],
+				        eval = fun_intern.eval[token.index],
 				        priority = 4 + bracket_value
 				    });
                     priorities.insert_sorted (bracket_value + 4, (LinkedList.SortingFunction <uint>) compare_uint);
 				    break;
 				}
 				case Type.FUNCTION: {
-				    section.add (Part () {
+				    section.append (Part () {
 				        index = section.length + invisible_parts,
 				        priority = 4 + bracket_value,
-				        eval = fun(){eval = fun_extern_eval, arg_right = fun_extern.arg_right[part.index]},
-				        data  = (fun_extern.data[part.index])
+				        eval = fun () {eval = fun_extern_eval, arg_right = fun_extern.arg_right[token.index]},
+				        data  = (fun_extern.data[token.index])
 				    });
 				    //TODO pass config
 				    priorities.insert_sorted (bracket_value + 4, (LinkedList.SortingFunction <uint>) compare_uint);
@@ -270,16 +277,16 @@ public class Calculator : GLib.Object
 				}
 				case Type.CONTROL: {
 				    invisible_parts ++;
-					if (part.value == ")") {
+					if (token.value == ")") {
 					    bracket_value -= bracket;
 					    if (section.length >= 1)
-					        section.get (section.length - 1).bracket_value --;
+					        section.last.bracket_value --;
 					}
-					else if (part.value == "(") {
+					else if (token.value == "(") {
 					    bracket_value += bracket;
                         if (section.length >= 1) {
-					        section.get (section.length - 1).bracket_value ++;
-					        section.get (section.length - 1).modifier |= OPENING_BRACKET;
+					        section.last.bracket_value ++;
+					        section.last.modifier |= OPENING_BRACKET;
 					    }
 					}
 					break;
@@ -305,21 +312,37 @@ public class Calculator : GLib.Object
 
 	}
 
-	public void eval() throws CALC_ERROR
+	public void eval () throws CALC_ERROR
 	{
 
 		foreach (var priority in priorities)
 		{
 			var ind = -1;
-
-			for (int j = 0; j < section.length; j++)
-			    if (section.get(j).has_value == false && section.get(j).priority == priority) {
-			        ind = j;
+			var i = 0;
+			Part? part = null;
+			unowned LinkedList.Node? node_of_part = null;
+            //TODO use find()
+			/*foreach (var _part in section) {
+			    if (_part.has_value == false && _part.priority == priority) {
+			        ind = i;
+			        part = _part;
 			        break;
 			    }
+			    i ++;
+			}*/
 
-			var part = section.get (ind);
+			section.each_node_i ( (_node, index, ref proceed) => {
+			    unowned var node = (LinkedList.Node<Part?>) _node;
 
+			    if (node.value.has_value == false && node.value.priority == priority) {
+			        ind = index;
+			        part = node.value;
+			        node_of_part = node;
+			        proceed = false;
+			    }
+			} );
+
+            //TODO do not allow e.g. sum(4+(4, 4));
 			var bracket_scope = 0;
 			var check_scope = false;
 			if ( (part.eval.arg_right >= 1 || part.eval.arg_right == -1) ) {
@@ -332,16 +355,16 @@ public class Calculator : GLib.Object
 			    //bracket_scope += (int) (OPENING_BRACKET in part.modifier);
 			}
 
-			double[] arg = {};
+			double[] arg= {};
 
 			//get arg_left
 			if (part.eval.arg_left > 0)
 			{
-			    if ( (ind - 1) >= 0 && section.get (ind - 1).has_value) {
-				    arg += section.get (ind - 1).value;
-				    section.remove_index (ind - 1);
-				}
-				else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(parts[ind].value)' requires a left argument");
+			    Part? previous_part = null;
+			    if ( (ind - 1) >= 0 && (previous_part = section.get (ind - 1)).has_value ) {
+						arg += previous_part.value;
+						section.remove (ind - 1);
+				} else throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$(tokens[ind].value)' requires a left argument");
 			}
 
 			//get arg_right
@@ -349,10 +372,11 @@ public class Calculator : GLib.Object
 			while (l < part.eval.arg_right || part.eval.arg_right == -1)
 			{
 			    l ++;
-			    if ( (ind + 1 - part.eval.arg_left) < section.length && section.get (ind + 1 - part.eval.arg_left).has_value && !(check_scope && bracket_scope <= 0) ) {
-				    arg += section.get (ind + 1 - part.eval.arg_left).value;
-				    bracket_scope += section.get (ind + 1 - part.eval.arg_left).bracket_value;
-				    section.remove_index (ind + 1 - part.eval.arg_left);
+			    Part? next_arg = null;
+			    if ( (ind + 1 - part.eval.arg_left) < section.length && (next_arg = (Part?) node_of_part.next.value).has_value && !(check_scope && bracket_scope <= 0) ) {
+				    arg += next_arg.value;
+				    bracket_scope += next_arg.bracket_value;
+				    section.remove_next_node (node_of_part);
 				}
 				else if (part.eval.min_arg_right != -1 && l > part.eval.min_arg_right) {
 				    break;
@@ -360,13 +384,13 @@ public class Calculator : GLib.Object
 				else {
 				    var arg_right = (part.eval.min_arg_right > 0) ? part.eval.min_arg_right : part.eval.arg_right;
 				    var no_max = part.eval.min_arg_right > 0;
-				    var key = parts[part.index].value;
+				    var key = tokens[part.index].value;
 				    throw new CALC_ERROR.MISSING_ARGUMENT(@"Missing Argument, '$key' requires $( (no_max) ? "at least " : "" )$(arg_right) right $( (arg_right > 1) ? "arguments" : "argument"  )");
 			    }
 			}
 
-			section.set (ind - part.eval.arg_left, Part() {
-				value = part.eval.eval(arg, part.data),
+			section.set (ind - part.eval.arg_left, Part () {
+				value = part.eval.eval (arg, part.data),
 				has_value = true,
 				bracket_value = bracket_scope
 			});
@@ -376,7 +400,7 @@ public class Calculator : GLib.Object
 		    	throw new CALC_ERROR.REMAINING_ARGUMENT(@"$(section.length - 1) $( (section.length > 2) ? "arguments are" : "argument is" ) remaining");
 		}
 
-		result = section.get(0).value ?? 0 / 0;
+		result = section.first.value ?? 0 / 0;
 
 		if (round_result) {
 		    result = round (result * pow (10, decimal_digits)) / pow (10, decimal_digits);
@@ -412,17 +436,22 @@ public class Calculator : GLib.Object
         return this.result;
     }
 
+    //TODO rework
     public static double eval_trusted_function (double[] value, UserFuncData data) {
 
         var priorities = new LinkedList <uint> ();
-        var section = new GenericArray <Part?> (data.parts.length);
+        var section = new LinkedList <Part?> ();
 
-        data.parts.foreach ((part) => section.add (part));
+        //data.parts.foreach ((part) => section.add (part));
+        section = data.parts.copy ();
         priorities = data.priorities.copy ();
 
-        // set parameters
+        // set parameters TODO use foreach
         for (int i = 0; i < data.part_index.length; i++) {
-            section[data.part_index[i]].value = value[data.argument_index[i]];
+
+            // get_node is used because Part is a struct
+            section.get_node (data.part_index[i]).value.value = value[data.argument_index[i]];
+
         }
 
 		foreach (var priority in priorities)
@@ -454,7 +483,7 @@ public class Calculator : GLib.Object
 			if (part.eval.arg_left > 0)
 			{
 				    arg += section.get (ind - 1).value;
-				    section.remove_index (ind - 1);
+				    section.remove (ind - 1);
 			}
 
 			//get arg_right
@@ -465,7 +494,7 @@ public class Calculator : GLib.Object
 			    if ( (ind + 1 - part.eval.arg_left) < section.length && !(check_scope && bracket_scope <= 0) ) {
 				    arg += section.get (ind + 1 - part.eval.arg_left).value;
 				    bracket_scope += section.get (ind + 1 - part.eval.arg_left).bracket_value;
-				    section.remove_index (ind + 1 - part.eval.arg_left);
+				    section.remove (ind + 1 - part.eval.arg_left);
 				}
 				else {
 				    break;
@@ -478,7 +507,7 @@ public class Calculator : GLib.Object
 				bracket_value = bracket_scope
 			});
 		}
-		return section.get (0).value;
+		return section.first.value;
     }
 
 

@@ -53,7 +53,7 @@ struct ChildData
 	key: string
 	virtual_index: int
 
-struct PreparePart
+struct Token
 	value:string
 	type:Type
 	length:int
@@ -192,13 +192,16 @@ struct fun
 	construct (min_arg_right:int = -1)
 		this.min_arg_right = min_arg_right
 
+	construct variable_arguments (min_arg_right: int = -1)
+		arg_right = int.MAX
+		this.min_arg_right = min_arg_right
 
 
 class UserFuncData: Data
 	part_index: array of int
 	argument_index: array of int
 	priorities: LinkedList of uint
-	parts: GenericArray of Part?
+	parts: LinkedList of Part?
 
 	construct with_data(expression:string, variables: array of string) raises Calculation.CALC_ERROR
 		try
@@ -223,12 +226,12 @@ class UserFuncData: Data
 			e.clear()
 			raise er
 		// set part_index && argument_index
-		var parts = e.get_parts()
+		var tokens = e.get_tokens ()
 		part_ind: array of int = new array of int[0]
 		argument_ind: array of int = new array of int[0]
 		i:int = 0
 		position:int = -1
-		for p in parts
+		for p in tokens
 			if p.type == Type.VARIABLE
 				position = get_string_index(e.variable.key, p.value)
 				if position > (amount_default_vars - 1)
@@ -238,7 +241,7 @@ class UserFuncData: Data
 			i++
 		this.part_index = part_ind
 		this.argument_index = argument_ind
-		//set priorities && parts
+		//set priorities && tokens
 		try
 			e.prepare()
 			this.parts = e.get_section()
@@ -251,7 +254,7 @@ class UserFuncData: Data
 		if test
 			try
 				var test_e = new Calculation.Calculator.with_data (e.get_section (), e.get_priorities ())
-				test_e.set_parts (e.get_parts ())
+				test_e.set_tokens (e.get_tokens ())
 				test_e.eval()
 			except er: Calculation.CALC_ERROR
 				er.message = "incorrect expression: " + er.message
@@ -307,7 +310,7 @@ def median (v: array of double): double
 
 
 
-def next_multi_match (input:string, string_start:int, data:array of MatchData): PreparePart
+def next_multi_match (input:string, string_start:int, data:array of MatchData): Token
 	max_match_type_index:int = -1
 	max_match_index:int = -1
 	max_match_length:int = -1
@@ -324,26 +327,28 @@ def next_multi_match (input:string, string_start:int, data:array of MatchData): 
 
 		for e in d.children
 			j ++
-			if (e.key.length <= (input.length - string_start) && e.key.length > max_match_length && input [string_start : string_start + e.key.length] == e.key)
-				max_match_type_index = i
-				max_match_index = j
-				max_match_length = e.key.length
-				break
+			if e.key.length > max_match_length
+				if (e.key.length <= (input.length - string_start) && input [string_start : string_start + e.key.length] == e.key)
+					max_match_type_index = i
+					max_match_index = j
+					max_match_length = e.key.length
+					break
+			else do break
 
 	if (max_match_length > 0)
-		return PreparePart() {
+		return Token() {
 			value = data[max_match_type_index].children[max_match_index].key,
 			type = data[max_match_type_index].type,
 			length = data[max_match_type_index].children[max_match_index].key.length,
 			index = data[max_match_type_index].children[max_match_index].virtual_index
 		}
 	else
-		return PreparePart() {
+		return Token() {
 			length = -1
 		}
 
 
-def next_real_match (input:string, string_start:int, data:array of MatchData, can_negative:bool):PreparePart
+def next_real_match (input:string, string_start:int, data:array of MatchData, can_negative:bool):Token
 	can_number:bool = false
 	is_decimal:bool = false
 	is_number:bool = false
@@ -366,7 +371,7 @@ def next_real_match (input:string, string_start:int, data:array of MatchData, ca
 				is_decimal = true
 			else
 				if is_number
-					return PreparePart () {
+					return Token () {
 						value = input[string_start:i],
 						type = NUMBER,
 						length = i - string_start
