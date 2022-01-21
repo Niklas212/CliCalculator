@@ -6,6 +6,7 @@ public class LinkedList <T> {
     private unowned Node <T> ? end;
 
     public delegate bool SortingFunction <T> (T a, T b);
+    public delegate bool CompareFunction <T> (T a);
     public delegate void Each <T> (T value, ref bool proceed);
     public delegate void EachI <T> (T value, int index, ref bool proceed);
     public delegate void EachNode <T> (Node <T> value, ref bool proceed);
@@ -83,6 +84,26 @@ public class LinkedList <T> {
         length = 0;
         start = null;
         end = null;
+    }
+
+    public LinkedList.with_values (owned T value1, ...) {
+        var node1 = new Node <T> (value1);
+        start = (owned) node1;
+        length = 1;
+
+        var l = va_list ();
+        T value = null;
+        Node <T> node = null;
+        unowned Node <T> last_node = start;
+
+        while ( (value = l.arg ()) != null) {
+            node = new Node <T> (value);
+            last_node.next = (owned) node;
+            last_node = last_node.next;
+            length ++;
+        }
+
+        end = last_node;
     }
 
     public void append (T value) {
@@ -171,8 +192,8 @@ public class LinkedList <T> {
                 new_node.next = (owned) start;
                 start = (owned) new_node;
             } else if (i == length) {
-                last_node.next = (owned) new_node;
                 end = new_node;
+                last_node.next = (owned) new_node;
             } else {
                 new_node.next = (owned) last_node.next;
                 last_node.next = (owned) new_node;
@@ -217,6 +238,38 @@ public class LinkedList <T> {
 		#endif
     }
 
+    public bool remove_where (CompareFunction fun) requires (length > 0) {
+
+        unowned Node <T> node = start;
+        unowned Node <T> previous_node = null;
+
+        while (node != null) {
+            if (fun (node.value)) {
+
+                if (previous_node == null) {
+                    start = (owned) node.next;
+
+                    if (length == 1) {
+                        end = null;
+                    }
+                } else if (node.next == null) {
+                    end = previous_node;
+                    previous_node.next = null;
+                } else {
+                    previous_node.next = (owned) node.next;
+                }
+
+                length --;
+                return true;
+            }
+
+        previous_node = node;
+        node = node.next;
+    }
+
+        return false;
+    }
+
     public void remove_next_node (unowned Node <T> node) requires (node.next != null) {
         #if PROFILE_LINKED_LIST
 		remove_next_node_info.start ();
@@ -232,6 +285,15 @@ public class LinkedList <T> {
 		#if PROFILE_LINKED_LIST
 		remove_next_node_info.end ();
 		#endif
+    }
+
+    public void add_next_node (unowned Node <T> node, T value) {
+
+        var new_node = new Node <T> (value);
+        new_node.next = (owned) node.next;
+
+        node.next = (owned) new_node;
+        length ++;
     }
 
     public LinkedList <T> copy () {
@@ -346,6 +408,19 @@ public class LinkedList <T> {
         }
 
         return node;
+    }
+
+    public unowned Node <T> find_node (CompareFunction fun) {
+        unowned Node <T> node = start;
+
+        while (node != null) {
+            if (fun (node.value))
+                return node;
+
+            node = node.next;
+        }
+
+        return null;
     }
 
 	[Compact]

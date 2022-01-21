@@ -35,28 +35,36 @@ int main (string[] args)
 
         assert (calc.eval_auto ("root (median (1, 3, 9), sum( 1 2 1+1 mean 2 4))") == 2);
 
-        assert (calc.create_variable ("x", "2(2+3)") == 10);
-        assert (calc.create_variable ("y", "1") == 1);
+        assert (calc.create_variable ("x", "2(2+3)").value == 10);
+        assert (calc.create_variable ("y", "1").value == 1);
         assert (calc.eval_auto ("x") == 10);
         assert (calc.eval_auto ("xy") == 10);
-        assert (calc.create_variable ("xy", "-(1)") == -1);
+        assert (calc.create_variable ("xy", "-(1)").value == -1);
         assert (calc.eval_auto ("xy") == -1);
-        assert (calc.create_variable ("xy", "-2") == -2);
+        assert (calc.create_variable ("xy", "-2").value == -2);
         assert (calc.eval_auto ("xy") == -2);
-        calc.remove_variable ("xy");
+        calc.delete_token ("xy");
         assert (calc.eval_auto ("xy") == 10);
 
         calc.create_function ("hypo", "sqrt(aa+bb)", {"a", "b"});
         assert (calc.eval_auto ("hypo (3, 4)") == 5);
-        calc.remove_function ("hypo");
+        calc.delete_token ("hypo");
 
         Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
         Color.print (e.message + "\n", Color.red);
     }
+
+    #endif
+
+    #if PROFILE_LINKED_LIST
+    print (@"$(calc.get_section ())");
     #endif
 
     Execution eval = (input) => {
+        if (input.length < 1)
+            return;
+
         try {
             print ( ">>\t" + calc.eval_auto (input).to_string () + "\n\n");
         } catch (Error e) {
@@ -68,14 +76,16 @@ int main (string[] args)
 
     Execution list = () => {
 
-        if (calc.variable.key.length > 0 || calc.fun_extern.key.length > 0) {
-            //variables
-            for (int i = 0; i < calc.variable.key.length; i++) {
-                print(@"\t$(calc.variable.key[i])\t=\t$(calc.variable.value[i])\n");
+        if (calc.variables.length > 0 || calc.functions.length > 0) {
+
+            foreach (var v in calc.variables) {
+                print ("\t%s (%f)\n", v.key, v.value);
             }
-            //functions
-            for (int i = 0; i < calc.fun_extern.key.length; i++)
-                print(@"\t$(calc.fun_extern.key[i]) (function)\n");
+
+            foreach (var f in calc.functions) {
+                print ("\t%s (function)\n", f.key);
+            }
+
             print("\n");
         }
         else
@@ -86,20 +96,15 @@ int main (string[] args)
 
 	    var parts = Regex.split_simple("[=:]", input);
         string key = parts[0].replace(" ", "");
-        //checks if the name is used for a function
-        if (calc.contains_symbol (parts[0].replace(" ", ""), false)) {
-            Color.print(@"$(parts[0]) is already defined (function)\n\n", Color.yellow);
-            return;
-        }
 
         try {
-            var value = calc.create_variable (key, parts[1], true);
-            Color.print (@"variable '$key' defined ($value)\n", Color.green);
+            var variable = calc.create_variable (key, parts[1]);
+            Color.print (@"variable '$key' defined ($(variable.value))\n", Color.green);
         } catch (Error e) {
-            print(e.message + "\n\n");
+            Color.print (e.message + "\n\n", Color.yellow);
         }
         print("\n");
-    };
+   };
 
     Execution create_function = (input) => {
 
@@ -108,33 +113,20 @@ int main (string[] args)
         var fst_parts = Regex.split_simple("[(]", parts[0]);
         string name = fst_parts[0].replace(" ","");
         string[] paras = Regex.split_simple(",", (fst_parts[1].replace(" ", ""))[0:-1]);
-        //checks if a variable is already named so
-        if (calc.contains_symbol (name)) {
-            Color.print (@"$name is already defined ($( (calc.contains_symbol (name, false)) ? "function" : "variable" ))\n\n", Color.yellow);
-            return;
-        }
 
         try {
             calc.create_function (name, expression, paras);
             Color.print (@"function '$name' defined\n\n", Color.green);
         } catch (Error e) {
-            print(e.message + "\n\n");
+            Color.print (e.message + "\n\n", Color.yellow);
         }
     };
 
     Execution delete = (input) => {
         var name = input.replace("rm", "").replace(" ", "");
         try {
-            if (name in calc.variable.key) {
-                calc.remove_variable(name);
-                Color.print (@"variable '$name' deleted\n\n", Color.magenta);
-            }
-            else if (name in calc.fun_extern.key) {
-                calc.remove_function(name);
-                Color.print (@"function '$name' deleted\n\n", Color.magenta);
-            }
-            else
-                throw new CALC_ERROR.UNKNOWN(@"'$name' is not defined");
+                calc.delete_token (name);
+                Color.print ("symbol '%s' removed\n\n".printf (name), Color.magenta);
         } catch (Error e) {
             Color.print (e.message + "\n\n", Color.yellow);
         }
@@ -142,7 +134,7 @@ int main (string[] args)
 
     Execution settings = (input) => {
 
-        string arg = input [8:input.length];
+       string arg = input [8:input.length];
 
 
         if (arg.chomp () == "")
