@@ -53,7 +53,7 @@ public class Calculator : GLib.Object
     }
 
     public MODE mode {get; set; default = DEGREE;}
-    public static const double deg_to_rad_factor = PI / 180;
+    public const double deg_to_rad_factor = PI / 180;
     private double deg_to_rad = deg_to_rad_factor;
 
     public TokenData multiplication_token {get; private set;}
@@ -124,7 +124,7 @@ public class Calculator : GLib.Object
         return fun;
     }
 
-    public void delete_token (string key, Type type = Type.UNDEFINED) throws Calculation.CALC_ERROR {
+    public void delete_token (string key) throws Calculation.CALC_ERROR {
         var t = match_data [key];
 
         if (t == null) {
@@ -146,13 +146,6 @@ public class Calculator : GLib.Object
 
     }
 
-    public void remove_symbol (string key) throws Calculation.CALC_ERROR {
-        match_data.remove_token (key);
-    }
-
-    public bool contains_symbol (string key) {
-        return match_data.contains (key);
-    }
 
     public LinkedList <Token?> tokenise (MatchData match_data, out LinkedList <uint?> priorities) throws CALC_ERROR {
         bool can_negative = true;
