@@ -50,6 +50,18 @@ int main (string[] args)
         assert (calc.eval_auto ("hypo (3, 4)") == 5);
         calc.delete_token ("hypo");
 
+        assert (calc.create_variable ("z", "2.5E2").value == 250);
+        calc.create_function ("f", "xz", {"x"});
+        calc.create_function ("g", "f (2x)", {"x"});
+
+        assert (calc.eval_auto ("g 2") == 1000);
+
+        calc.delete_token ("f");
+        calc.delete_token ("g");
+        calc.delete_token ("z");
+        calc.delete_token ("x");
+        calc.delete_token ("y");
+
         Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
         Color.print (e.message + "\n", Color.red);
