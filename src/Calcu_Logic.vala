@@ -19,15 +19,6 @@ public enum MODE {
     }
 }
 
-public enum MATCH_DATA_TYPE {
-    OPERATOR,
-	FUN_INTERN,
-	FUN_EXTERN,
-	CONTROL,
-	VARIABLE,
-    AMOUNT_TYPES
-}
-
 public class Calculator : GLib.Object
 {
     construct {
@@ -62,8 +53,8 @@ public class Calculator : GLib.Object
     public MatchData match_data {get; private set;}
 
     public string input {get; set; default = "";}
-	public double? result {get; private set; default = null;}
-	public string[] error_info = new string[3];
+	public double result {get; private set; default = 0;}
+	public string[] error_info = new string [3];
 
     public int8 decimal_digits {get; set; default = 4;}
     public bool round_result {get; set; default = false;}
@@ -74,11 +65,7 @@ public class Calculator : GLib.Object
     public int bracket {get; set; default = 5;}
 
 
-    public void clear () {
-
-    }
-
-    public double to_radian (double value) {
+    public inline double to_radian (double value) {
         return value * deg_to_rad;
     }
 
@@ -144,6 +131,19 @@ public class Calculator : GLib.Object
 
         match_data.remove_token (key);
 
+    }
+
+    public void add_token (TokenData token) throws Calculation.CALC_ERROR {
+
+        assert (token != null);
+
+        match_data.add_token (token);
+
+        if (token.type == VARIABLE) {
+            variables.append (token);
+        } else if (token.type == FUNCTION_EXTERN) {
+            functions.append (token);
+        }
     }
 
 
@@ -337,39 +337,34 @@ public class Calculator : GLib.Object
     public double eval_auto (string in) throws CALC_ERROR {
         this.input = in;
 
-        try {
-            #if DEBUG
-            int64 msec0 = GLib.get_real_time();
-            #endif
-            LinkedList <uint?> priorities;
-            var tokens = tokenise (match_data, out priorities);
-            #if DEBUG
-            int64 msec1 = GLib.get_real_time();
-            #endif
-            var result = eval_ (tokens, priorities);
-            this.result = result;
-            #if DEBUG
-            int64 msec2 = GLib.get_real_time();
 
-            print (@"times\t$(msec1 - msec0)\t$(msec2 - msec1)\n");
-            #endif
-        }
-        catch (Error e) {
-            this.clear ();
-            throw e;
-        }
-        this.clear ();
+        #if DEBUG
+        int64 msec0 = GLib.get_real_time();
+        #endif
+
+        LinkedList <uint?> priorities;
+        var tokens = tokenise (match_data, out priorities);
+
+        #if DEBUG
+        int64 msec1 = GLib.get_real_time();
+        #endif
+
+        var result = eval_ (tokens, priorities);
+        this.result = result;
+
+        #if DEBUG
+        int64 msec2 = GLib.get_real_time();
+        print (@"times\t$(msec1 - msec0)\t$(msec2 - msec1)\n");
+        #endif
+
 
         if (round_result) {
-            return round (this.result * pow (10, decimal_digits)) / pow (10, decimal_digits);
+            return round (this.result * exp10 (decimal_digits)) / exp10 (decimal_digits);
         }
 
         return this.result;
     }
 
-    public static bool compare_uint (uint a, uint b) {
-        return a < b;
-    }
 }
 
 }
