@@ -80,6 +80,12 @@ public class LinkedList <T> {
 		}
 	}
 
+	public Node <T> last_node {
+	    get {
+	        return end;
+	    }
+	}
+
     public LinkedList () {
         length = 0;
         start = null;
