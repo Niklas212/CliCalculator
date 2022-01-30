@@ -25,6 +25,9 @@ int main (string[] args)
     var calc = new Calculator ();
 
     #if DEBUG
+
+    CustomFunctionData.print_progress = true;
+
     try {
         assert (calc.eval_auto ("3+4*2") == 11);
         assert (calc.eval_auto ("(3+4)*2") == 14);
@@ -56,16 +59,35 @@ int main (string[] args)
 
         assert (calc.eval_auto ("g 2") == 1000);
 
+        CustomFunctionData.Point[] points = {
+            CustomFunctionData.Point (0, 0),
+            CustomFunctionData.Point (1, 1),
+            CustomFunctionData.Point (2, 2),
+            CustomFunctionData.Point (3, 1)
+        };
+
+
+        var fun = new CustomFunctionData.by_points ("f1", points, calc.match_data);
+        calc.add_token (fun);
+        assert (calc.eval_auto ("f1 (-1)") == 1);
+
+        var fun2 = new CustomFunctionData.by_xy_values ("f2", {0.0, 0.0, 1.0, 1.0, 2.0, 2.0}, calc.match_data);
+        calc.add_token (fun2);
+        assert (calc.eval_auto ("f2 -87") == -87);
+
         calc.delete_token ("f");
         calc.delete_token ("g");
         calc.delete_token ("z");
         calc.delete_token ("x");
         calc.delete_token ("y");
+        calc.delete_token ("f1");
+        calc.delete_token ("f2");
 
         Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
         Color.print (e.message + "\n", Color.red);
     }
+
 
     #endif
 
@@ -80,7 +102,7 @@ int main (string[] args)
         try {
             print ( ">>\t" + calc.eval_auto (input).to_string () + "\n\n");
         } catch (Error e) {
-            if (e is CALC_ERROR.INVALID_SYMBOL /*|| e is CALC_ERROR.REMAINING_ARGUMENT*/)
+            if (e is CALC_ERROR.INVALID_SYMBOL)
                 print ("\x1b[1F\x1b[2K" + calc.error_info[0] + Color.red + calc.error_info[1] + Color.reset + calc.error_info[2] + "\n");
             Color.print (e.message + "\n\n", Color.red);
         }

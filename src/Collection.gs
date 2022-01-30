@@ -11,6 +11,7 @@ enum Modifier
 	GENERATED
 	CHANGED
 	TAGGED
+	PARAMETER
 
 
 enum Type
@@ -69,6 +70,9 @@ struct Token
 
 			if CHANGED in modifier
 				builder.append ("CHANGED; ")
+
+			if PARAMETER in modifier
+				builder.append ("PARAMETER; ")
 
 			builder.append ("\n")
 
@@ -129,6 +133,8 @@ class CustomFunctionData : TokenData
 	tokens: LinkedList of Token?
 	arguments: array of ArgumentInfo
 
+	print_progress: static bool = false
+
 	construct (key: string)
 		type = FUNCTION_EXTERN
 		has_value = false
@@ -187,6 +193,268 @@ class CustomFunctionData : TokenData
 				raise new Calculation.CALC_ERROR.UNKNOWN ("invalid expression: %s", error.message)
 
 
+	construct by_points (_key: string, points: array of Point, match_data: MatchData, needed_decimal_digits: int = 12) raises Calculation.CALC_ERROR
+		self (_key)
+
+		// code below checks if multiple points have the same y value and shifts the points
+
+		var y_values = new array of double [points.length, 2]
+
+		for var i = 0 to (points.length - 1)
+			var y = points[i].y
+			var is_set = false
+
+			for var j = 0 to (i - 1)
+				if y_values[j, 0] == y
+					y_values [j, 1] ++
+					is_set = true
+					break;
+
+			if not is_set
+				y_values[i, 0] = y
+
+		var y_value = 0.0
+		var amount_points = -1.0
+
+		for var i = 0 to (points.length - 1)
+			if y_values [i, 1] > amount_points
+				amount_points = y_values [i, 1]
+				y_value = y_values [i, 0]
+
+		for var i = 0 to (points.length - 1)
+			points[i].y -= y_value
+
+		generate_function_from_points (points, match_data, needed_decimal_digits)
+
+		// 'reverse' the shift of the points
+		tokens.last.value += y_value
+
+
+	construct by_xy_values (_key: string, values: array of double, match_data: MatchData, needed_decimal_digits:int = 12) raises Calculation.CALC_ERROR
+		var points = new array of Point[0]
+
+		if values.length % 2 == 1
+			raise new Calculation.CALC_ERROR.UNKNOWN ("missing y-value")
+
+		for var i = 0 to (values.length / 2 - 1)
+			points += Point (values[i * 2], values[i * 2 + 1])
+
+		self.by_points (_key, points, match_data, needed_decimal_digits)
+
+
+
+	/*
+		generates a function f(x) = a*x^n + b*x^(n-1) ... that goes through the given points
+
+		to generate the fuction:
+			every point has its own subfunction
+			the final function is the sum of the subfunctions
+			f(x) = g(x) + h(x) + ...
+
+			the subfunction of a point evaluates to point.y for point.x
+			for the x-values of the other points it evaluates to 0
+
+				e.g. for the given points: (1, 2), (2, 4), (3, 5)
+					g(x) // represents (1, 2)
+						g(1) = 2
+						g(2) = 0
+						g(3) = 0
+					h(x) // represents (2, 4)
+						h(1) = 0
+						h(2) = 4
+						h(3) = 0
+					i(x) // represents (3, 5)
+						i(1) = 0
+						i(2) = 0
+						i(3) = 5
+
+					final function:
+					f(x) = g(x) + h(x) + i (x)
+						f(1) = 2
+						f(2) = 4
+						f(3) = 5
+
+			to generate a subfunction 'g' that represents the point 'p':
+				g(x) = p.y * (x - otherPoint.x) * (x - anotherPoint.x) ... / ((p.x - otherPoint.x) * (p.x - anotherPoint.x) ...)
+
+				e.g. for the given points: (1, 2), (2, 4), (3, 5)
+					the subfunction that represents the first point:
+						g(x) = 2 * (x - 2) * (x - 3) / ( (1 - 2) * (1 - 3))
+
+			the subfunctions are expanded
+				e.g. g(x) [see above] = x^2 - 5x + 6
+
+			the subfunctions are summed
+				e.g. for the given points: (1, 2), (2, 4), (3, 5)
+					g(x) = x^2 - 5x + 6
+					h(x) = -4x^2 + 16x - 12
+					i(x) = 2.5x^2 - 7.5x + 5
+
+					f(x) = g(x) + h(x) + i(x)
+					=> f(x) = -0.5x^2 + 3.5x - 1
+
+	*/
+
+	def generate_function_from_points (points: array of Point, match_data: MatchData, needed_decimal_digits:int = 12) raises Calculation.CALC_ERROR
+		eval_fun.arg_right = 1
+
+		var amount_of_points = points.length
+
+		var factors = new array of double[amount_of_points]
+
+		// stores the factors (a, b, ...)
+		var values = new array of double[amount_of_points]
+
+		for var i = 0 to (amount_of_points - 1) do factors[i] = 1
+
+		for var f = 0 to (amount_of_points - 1)
+			for var i = 0 to (amount_of_points - 1)
+				if f == i do continue
+
+				if points[i].x == points[f].x
+					raise new Calculation.CALC_ERROR.UNKNOWN ("every point must have a unique x-value")
+
+				factors [i] *= points[i].x - points[f].x
+
+
+		var max_paths = 1 << (points.length) - 1
+
+		// subfunction for every point
+		for var i = 0 to (amount_of_points - 1)
+			var path = 0
+
+			if points[i].y == 0
+				if print_progress
+					print "calculated paths of point [%d/%d]", i + 1, points.length
+				continue
+
+			// for every combination: 0 -> 'x' 1 -> x-value
+			while (path < (1 << (points.length - 1)))
+
+				if print_progress
+					print "calculate path [%d/%d] of point [%d/%d]", path, max_paths, i + 1, points.length
+
+				var cur_value = points[i].y / factors[i]
+
+
+				var amount_x = 0
+				var bit_index = -1
+
+				// evaluate the combination
+				for var p = 0 to (points.length - 1)
+					if p == i do continue
+					else do bit_index ++
+
+					// check wheter multiply with 'x' or -x value of point
+					if ((path & (1 << bit_index)) > 0)
+						cur_value *= (- points[p].x)
+					else
+						amount_x ++
+
+
+				values [amount_x] += cur_value
+
+
+				path ++
+
+
+		// round values e.g.  1e-16 -> 0
+		if needed_decimal_digits > 0
+			for var i = 0 to (values.length - 1)
+				if values [i].abs () < exp10 (-needed_decimal_digits)
+					values [i] = 0.0
+					continue
+				values [i] = round (values[i] * exp10 (needed_decimal_digits)) / exp10 (needed_decimal_digits)
+
+
+		// generate tokens: a*x^n + b*x^(n-1) ...
+		tokens = new LinkedList of Token?
+		priorities = new LinkedList of uint?
+		_arguments: array of ArgumentInfo = self.arguments
+
+		var multiplication_token = match_data ["*"]
+		var addition_token = match_data ["+"]
+		var power_token = match_data ["^"]
+
+		var amount_power_tokens = 0
+		var amount_multiplication_tokens = 0
+		var amount_addition_tokens = 0
+
+		for var i = 0 to (points.length - 1)
+			var x = points.length - 1 - i
+
+			if values[x] == 0 and x != 0 do continue
+
+			if values [x] != 1 or x == 0
+				// a
+				tokens.append ( Token () {
+					has_value = true,
+					data = null,
+					value = values [x]
+				} )
+
+				if x == 0 do continue
+
+				// *
+				tokens.append (multiplication_token.generate_token ())
+				amount_multiplication_tokens ++
+
+			// x
+			tokens.append ( Token () {
+				has_value = true,
+				data = null,
+				value = 0,
+				modifier = PARAMETER
+			})
+
+
+			// add argument
+			_arguments += ArgumentInfo () {
+				argument_index = 0,
+				node = tokens.last_node
+			}
+
+			if x > 1
+
+				// ^
+				tokens.append (power_token.generate_token ())
+				amount_power_tokens ++
+
+				// n
+				tokens.append ( Token () {
+					has_value = true,
+					data = null,
+					value = x
+				} )
+
+			if x > 0
+				// +
+				tokens.append (addition_token.generate_token ())
+				amount_addition_tokens ++
+
+		arguments = _arguments
+
+		// set priorities
+		for var i = 0 to (amount_power_tokens - 1)
+			priorities.append (power_token.priority)
+
+		for var i = 0 to (amount_multiplication_tokens - 1)
+			priorities.append (multiplication_token.priority)
+
+		for var i = 0 to (amount_addition_tokens - 1)
+			priorities.append (addition_token.priority)
+
+
+
+
+	struct Point
+		x: double
+		y: double
+
+		construct (x: double, y:double)
+			self.x = x
+			self.y = y
+
 	def new to_string (): string
 		var builder = new StringBuilder (super.to_string ())
 
@@ -208,6 +476,28 @@ class CustomFunctionData : TokenData
 			builder.append_printf ("\t\t%s\n", a.to_string ())
 
 		return (string) builder.data
+
+	//FIXME only works for functions generated with by_points()
+	def to_function_string (): string
+		var builder = new StringBuilder (key + " (a")
+
+		for i: char = 'b' to ('b' - 2 + eval_fun.arg_right)
+			builder.append ("," + (string) i)
+
+		builder.append (") = ")
+
+		for var token in tokens
+			if GENERATED in token.modifier do continue
+			if token.data == null
+				if PARAMETER in token.modifier
+					arg: char = (char) ('a' + (int) token.value)
+					builder.append_c (arg)
+				else
+					builder.append (token.value.to_string ())
+			else
+				builder.append (token.data.key)
+
+		return (string) builder.data;
 
 
 	struct ArgumentInfo
@@ -325,6 +615,7 @@ class MatchData
 		generate_jump_table ()
 
 
+
 	def remove_token (key: string) raises Calculation.CALC_ERROR
 		//TODO implement
 		if not (key in self)
@@ -338,35 +629,8 @@ class MatchData
 		clear_jump_table ()
 		generate_jump_table ()
 
-	def contains (key: string): bool
-		var first_char = key[0]
 
-		if first_char.isalpha ()
-			first_char = char_to_lower (first_char)
-			node: unowned LinkedList.Node of TokenData = jump_table [first_char - 64].start
-
-			if node == null
-				return false
-			else
-				for var i = 0 to (jump_table [first_char - 64].amount_entries - 1)
-					if node.value.key == key
-						return true
-					node = node.next
-				return false
-
-		else
-			node: unowned LinkedList.Node of TokenData = jump_table[0].start
-
-			if node == null
-				return false
-
-			for var i = 0 to (jump_table [0].amount_entries)
-				if node.value.key == key
-					return true
-				node = node.next
-			return false
-
-	def @get (key: string): TokenData?
+	def private _get (key: string): unowned LinkedList.Node of TokenData
 		var first_char = key[0]
 
 		if first_char.isalpha ()
@@ -378,7 +642,7 @@ class MatchData
 			else
 				for var i = 0 to (jump_table [first_char - 64].amount_entries - 1)
 					if node.value.key == key
-						return node.value
+						return node
 					node = node.next
 				return null
 
@@ -390,39 +654,24 @@ class MatchData
 
 			for var i = 0 to (jump_table [0].amount_entries)
 				if node.value.key == key
-					return node.value
+					return node
 				node = node.next
 			return null
 
+	def @contains (key: string): bool
+		return _get (key) != null
+
+	def @get (key: string): TokenData?
+		res: unowned LinkedList.Node of TokenData = _get (key)
+		return (res == null) ? null : res.value
+
 	def @set (key: string, value: TokenData)
-		var first_char = key[0]
+		node: unowned LinkedList.Node of TokenData = _get (key)
 
-		if first_char.isalpha ()
-			first_char = char_to_lower (first_char)
-			node: unowned LinkedList.Node of TokenData = jump_table [first_char - 64].start
-
-			if node == null
-				return
-			else
-				for var i = 0 to (jump_table [first_char - 64].amount_entries - 1)
-					if node.value.key == key
-						node.value = value
-						return
-					node = node.next
-				return
-
-		else
-			node: unowned LinkedList.Node of TokenData = jump_table[0].start
-
-			if node == null
-				return
-
-			for var i = 0 to (jump_table [0].amount_entries)
-				if node.value.key == key
-					node.value = value
-					return
-				node = node.next
+		if node == null
 			return
+
+		node.value = value
 
 
 	def to_string (): string
@@ -459,7 +708,7 @@ struct fun_
 
 
 
-def get_string_index(arr: array of string, match:string):int
+def get_string_index (arr: array of string, match:string):int
 	i:int = 0
 	for a in arr
 		if a == match
@@ -499,7 +748,6 @@ def mean (v:array of double): double
 	return result / v.length
 
 def median (v: array of double): double
-	// sorting //TODO use faster algorithm
 	for var i = 0 to (v.length - 2)
 		for var j = 0 to (v.length - 2)
 			if (v[j] > v[j + 1])
@@ -540,7 +788,56 @@ def get_next_token (input: string, string_start: int, data: MatchData): Token
 	}
 
 
-def next_match (input: string, string_start: int, data: MatchData, can_negative: bool, ref length: int): Token
+[Flags]
+enum MatchOptions
+	ALLOW_SCIENTIFIC_NOTATION
+	ALLOW_UNDERSCORES
+	ALL = (ALLOW_SCIENTIFIC_NOTATION
+		| ALLOW_UNDERSCORES)
+
+def string_to_double (str: string): double
+	var result = 0.0;
+	var negative = false;
+	var has_sign = false
+	var is_decimal = false;
+	var factor = 0.1;
+	var i = 0
+
+	if str[0] == '-'
+		i ++
+		negative = true
+		has_sign = true
+	else if str[0] == '+'
+		i ++
+		has_sign = true
+
+	while i < (str.length - 1)
+		var _char = str[i]
+
+		if _char >= 48 and _char <= 57
+			if not is_decimal
+				result *= 10
+				result += _char - 48
+			else
+				result += (_char - 48) * factor
+				factor *= 0.1
+		else if _char == '.'
+			if is_decimal or (has_sign and i == 1)
+				break
+			is_decimal = true
+		else if _char == '_' and (i > 1 or (not has_sign and i > 0))
+			pass
+		else
+			break
+
+		i ++
+
+	if negative
+		result = -result
+
+	return result
+
+def next_match (input: string, string_start: int, data: MatchData, can_negative: bool, ref length: int, options: MatchOptions = ALL): Token
 	can_number:bool = false
 	is_decimal:bool = false
 	is_number:bool = false
