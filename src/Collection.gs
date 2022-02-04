@@ -2,7 +2,7 @@
 uses GLib.Math
 
 [CCode (has_target = false)]
-delegate Eval_ (value: array of double, data: TokenData, calc: Calculation.Calculator): double
+delegate Eval (value: array of double, data: TokenData, calc: Calculation.Calculator): double
 
 [Flags]
 enum Modifier
@@ -150,7 +150,7 @@ class CustomFunctionData : TokenData
 
 			var tokens = data.tokens.copy ()
 
-			return calc.eval_ (tokens, data.priorities)
+			return calc.eval (tokens, data.priorities)
 
 
 
@@ -188,7 +188,7 @@ class CustomFunctionData : TokenData
 				for var i = 1 to args.length
 					paras [i - 1] = i
 
-				calc.eval_ (tokens.copy (), priorities)
+				calc.eval (tokens.copy (), priorities)
 			except error: Calculation.CALC_ERROR
 				raise new Calculation.CALC_ERROR.UNKNOWN ("invalid expression: %s", error.message)
 
@@ -694,7 +694,7 @@ class MatchData
 		return (string) builder.data
 
 struct fun_
-	eval: Eval_
+	eval: Eval
 	arg_left: int
 	arg_right: int
 	min_arg_right: int

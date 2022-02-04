@@ -27,7 +27,7 @@ public class Calculator : GLib.Object
         match_data.sort_tokens ();
         match_data.generate_jump_table ();
 
-        multiplication_token = match_data.sorted_tokens.find_node ( (a) => ((TokenData) a).key == "*" ).value;
+        multiplication_token = match_data ["*"];
 
         negate_token = new TokenData () {
             key = "-",
@@ -255,7 +255,7 @@ public class Calculator : GLib.Object
 		return tokens;
 	}
 
-	public double eval_ (LinkedList <Token?> tokens, LinkedList <uint?> priorities) throws CALC_ERROR {
+	public double eval (LinkedList <Token?> tokens, LinkedList <uint?> priorities) throws CALC_ERROR {
 
 		foreach (var priority in priorities) {
 			var ind = -1;
@@ -349,7 +349,7 @@ public class Calculator : GLib.Object
         int64 msec1 = GLib.get_real_time();
         #endif
 
-        var result = eval_ (tokens, priorities);
+        var result = eval (tokens, priorities);
         this.result = result;
 
         #if DEBUG
