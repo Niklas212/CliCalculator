@@ -132,8 +132,11 @@ class CustomFunctionData : TokenData
 	priorities: LinkedList of uint?
 	tokens: LinkedList of Token?
 	arguments: array of ArgumentInfo
+	parameters: array of TokenData
 
 	print_progress: static bool = false
+	//used by to_function_string ()
+	insert_spaces: static bool = true
 
 	construct (key: string)
 		type = FUNCTION_EXTERN
@@ -158,9 +161,13 @@ class CustomFunctionData : TokenData
 		self (_key)
 
 		var match_data = _match_data.copy ()
+		parameters = new array of TokenData [args.length]
 
+		var index = 0;
 		for var key in args
-			match_data.add_Tokenf (new TokenData.variable (key, 0))
+			var parameter = new TokenData.variable (key, 0)
+			match_data.add_Tokenf (parameter)
+			parameters [index ++] = parameter
 
 		calc.input = expression;
 		tokens = calc.tokenise (match_data, out priorities)
@@ -380,6 +387,9 @@ class CustomFunctionData : TokenData
 		var amount_multiplication_tokens = 0
 		var amount_addition_tokens = 0
 
+		// set parameter info
+		parameters = {new TokenData.variable ("x", 0)}
+
 		for var i = 0 to (points.length - 1)
 			var x = points.length - 1 - i
 
@@ -400,12 +410,7 @@ class CustomFunctionData : TokenData
 				amount_multiplication_tokens ++
 
 			// x
-			tokens.append ( Token () {
-				has_value = true,
-				data = null,
-				value = 0,
-				modifier = PARAMETER
-			})
+			tokens.append (parameters[0].generate_token ())
 
 
 			// add argument
@@ -479,23 +484,58 @@ class CustomFunctionData : TokenData
 
 	//FIXME only works for functions generated with by_points()
 	def to_function_string (): string
-		var builder = new StringBuilder (key + " (a")
 
-		for i: char = 'b' to ('b' - 2 + eval_fun.arg_right)
-			builder.append ("," + (string) i)
+		var builder = new StringBuilder (key + " (" + parameters[0].key)
+
+		for var i = 1 to (parameters.length - 1)
+			builder.append ("," + parameters[i].key)
 
 		builder.append (") = ")
 
+		var need_separator = false
+		var bracket_scope = 0u
+		var generated = false
+
+		if tokens.first.data != null
+			bracket_scope += (tokens.first.priority - tokens.first.data.priority) / 5
+		else
+			bracket_scope += (tokens[1].priority - tokens[1].data.priority) / 5
+
+		for var i = 1 to bracket_scope
+			builder.append_c ('(')
+
+
 		for var token in tokens
-			if GENERATED in token.modifier do continue
-			if token.data == null
-				if PARAMETER in token.modifier
-					arg: char = (char) ('a' + (int) token.value)
-					builder.append_c (arg)
-				else
-					builder.append (token.value.to_string ())
-			else
+			generated = GENERATED in token.modifier
+			if !generated and token.data == null
+				if need_separator
+					builder.append (", ")
+				builder.append (token.value.to_string ())
+			else if !generated
+				var append_spaces = insert_spaces and (
+					token.data.type == OPERATOR and
+					( token.data.eval_fun.arg_right
+					+ token.data.eval_fun.arg_left > 1
+					)
+				)
+				if append_spaces do builder.append_c (' ')
 				builder.append (token.data.key)
+				if append_spaces do builder.append_c (' ')
+
+
+			if token.bracket_scope != 0
+				var scope = token.bracket_scope
+				bracket_scope += scope
+				var bracket_char = (scope > 0) ? '(' : ')'
+				var brackets = (scope > 0) ? scope : -scope
+
+				for var i = 1 to brackets
+					builder.append_c (bracket_char)
+			else if insert_spaces and (token.data != null) and (token.data.type == FUNCTION_INTERN or token.data.type == FUNCTION_EXTERN)
+				// append space before a function, if there is no bracket: 'sinx' => 'sin x'
+				builder.append_c (' ')
+
+			need_separator = token.data == null
 
 		return (string) builder.data;
 
@@ -873,4 +913,5 @@ def next_match (input: string, string_start: int, data: MatchData, can_negative:
 	else
 		length = token.data.key.length
 	return token
+
 
