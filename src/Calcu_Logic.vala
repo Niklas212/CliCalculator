@@ -226,7 +226,7 @@ public class Calculator : GLib.Object
                     check_mul = token.has_value || (token.data != null && token.data.type == CLOSING_BRACKET);
 
 			        can_negative = token.data != null && (
-			                token.data.type == OPERATOR ||
+			                (token.data.type == OPERATOR && token.data.eval_fun.arg_right > 0) ||
 			                token.data.type == SEPARATOR ||
 			                token.data.type == OPENING_BRACKET
 			            );
