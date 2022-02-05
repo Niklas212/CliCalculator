@@ -80,8 +80,8 @@ int main (string[] args)
         calc.delete_token ("z");
         calc.delete_token ("x");
         calc.delete_token ("y");
-        calc.delete_token ("f1");
-        calc.delete_token ("f2");
+        //calc.delete_token ("f1");
+        //calc.delete_token ("f2");
 
         Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
@@ -117,7 +117,7 @@ int main (string[] args)
             }
 
             foreach (var f in calc.functions) {
-                print ("\t%s (function)\n", f.key);
+                print ("\t%s\n", (f as CustomFunctionData).to_function_string ());
             }
 
             print("\n");
