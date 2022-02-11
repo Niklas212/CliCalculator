@@ -451,7 +451,6 @@ class CustomFunctionData : TokenData
 
 
 
-
 	struct Point
 		x: double
 		y: double
@@ -482,7 +481,6 @@ class CustomFunctionData : TokenData
 
 		return (string) builder.data
 
-	//FIXME only works for functions generated with by_points()
 	def to_function_string (): string
 
 		var builder = new StringBuilder (key + " (" + parameters[0].key)
@@ -498,7 +496,7 @@ class CustomFunctionData : TokenData
 
 		if tokens.first.data != null
 			bracket_scope += (tokens.first.priority - tokens.first.data.priority) / 5
-		else
+		else if tokens.length > 1
 			bracket_scope += (tokens[1].priority - tokens[1].data.priority) / 5
 
 		for var i = 1 to bracket_scope
