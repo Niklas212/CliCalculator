@@ -80,8 +80,8 @@ int main (string[] args)
         calc.delete_token ("z");
         calc.delete_token ("x");
         calc.delete_token ("y");
-        //calc.delete_token ("f1");
-        //calc.delete_token ("f2");
+        calc.delete_token ("f1");
+        calc.delete_token ("f2");
 
         Color.print ("all tests passed\n\n", Color.green);
     } catch (Error e) {
@@ -255,6 +255,95 @@ int main (string[] args)
 
     };
 
+    Execution generate_function = (input) => {
+        string name = "";
+        string reason = "";
+
+        if (input.length > 16 && input[17] == ' ') {
+            name = input [18:];
+
+            if (!calc.valid_key (name, ref reason)) {
+                Color.print (reason + "\n\n", Color.yellow);
+                return;
+            }
+
+            print ("name: %s\n", name);
+        } else {
+            while (true) {
+                print ("name: ");
+                string name_input = stdin.read_line ();
+
+                if (name_input == "") {
+                    break;
+                }
+
+                if (calc.valid_key (name_input, ref reason)) {
+                    name = name_input;
+                    break;
+                } else {
+                    print ("\x1b[1F\x1b[2K");
+                }
+            }
+        }
+
+        CustomFunctionData.Point [] points = {};
+        var point = CustomFunctionData.Point (0, 0);
+        var nth_point = 1;
+
+        while (true) {
+
+            if (nth_point == 17) {
+                print ("only up to 16 points are supported\n");
+                break;
+            }
+
+            print ("P%d ( _ | y ) = ", nth_point);
+            var number_input = stdin.read_line ();
+
+            if (number_input == "") {
+                print ("\x1b[1F\x1b[2K");
+                break;
+            }
+
+            var numbers = number_input.split (",");
+
+            if (numbers.length == 2) {
+                    point.x = double.parse (numbers[0]);
+                    point.y = double.parse (numbers[1]);
+
+                    points += point;
+                    nth_point ++;
+
+                    print ("\x1b[1F\x1b[2KP%d ( %f | %f )\n", nth_point - 1, point.x, point.y);
+            } else if (numbers.length == 1) {
+                    point.x = double.parse (numbers[0]);
+                    print ("\x1b[1F\x1b[2KP%d ( x | _ ) = ", nth_point);
+
+                    number_input = stdin.read_line ();
+                    point.y = double.parse (number_input);
+
+                    points += point;
+                    nth_point ++;
+
+                    print ("\x1b[1F\x1b[2KP%d ( %f | %f )\n", nth_point - 1, point.x, point.y);
+
+            } else {
+                print ("\x1b[1F\x1b[2K");
+                continue;
+            }
+        }
+
+        try {
+            var fun = new CustomFunctionData.by_points (name, points, calc.match_data);
+            calc.add_token (fun);
+
+            print ("\n%s\n\n", fun.to_function_string ());
+        } catch (Error e) {
+            print (e.message + "\n\n");
+        }
+
+    };
+
     var con = Commands () {
         exit_commands = {"exit", "stop"},
         default_command = Command () {
@@ -279,6 +368,11 @@ int main (string[] args)
                 use_regex = true,
                 regex_match = "^[a-zA-Z]+[ ]?[(]([a-zA-Z]+,[ ]?)*[a-zA-Z]+[)][ ]?=.+$",
                 execute = create_function
+            },
+            Command () {
+                name = "generate-function",
+                description = "generates a function by points",
+                execute = generate_function
             },
             Command () {
                 name = "rm",

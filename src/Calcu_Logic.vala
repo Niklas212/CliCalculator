@@ -146,6 +146,24 @@ public class Calculator : GLib.Object
         }
     }
 
+    public bool valid_key (string key, ref string reason) {
+        for (var i = 0; i < key.length; i ++) {
+            if ((key[i] >= 'a' && key[i] <= 'z') || (key[i] >= 'A' && key[i] <= 'Z')) {
+                continue;
+            } else {
+                reason = "'%c' is no valid character".printf (key[i]);
+                return false;
+            }
+        }
+
+        if (match_data[key] != null) {
+            reason = "the key '%s' is already used".printf (key);
+            return false;
+        }
+
+        return true;
+    }
+
 
     public LinkedList <Token?> tokenise (MatchData match_data, out LinkedList <uint?> priorities) throws CALC_ERROR {
         bool can_negative = true;
