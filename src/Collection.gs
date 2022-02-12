@@ -662,10 +662,22 @@ class MatchData
 		remove_fun: LinkedList.CompareFunction of TokenData = def (a)
 			return a.key == key
 
+		var index = (key[0].isalpha ()) ? (char_to_lower (key[0]) - 64) : 0
+
+		if jump_table [index].start.value.key == key
+			if jump_table [index].start.next != null and char_to_lower (jump_table [index].start.next.value.key [0]) == char_to_lower (key [0])
+				jump_table [index].start = jump_table [index].start.next
+			else
+				jump_table [index].start = null
+
+		jump_table [index].amount_entries --
+
 		sorted_tokens.remove_where (remove_fun)
-		sort_tokens ()
+
+
+		/*sort_tokens ()
 		clear_jump_table ()
-		generate_jump_table ()
+		generate_jump_table ()*/
 
 
 	def private _get (key: string): unowned LinkedList.Node of TokenData
