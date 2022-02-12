@@ -236,6 +236,18 @@ class CustomFunctionData : TokenData
 		// 'reverse' the shift of the points
 		tokens.last.value += y_value
 
+		// delete '+ 0' at the end of the function
+		if tokens.length > 1 and tokens.last.value == 0.0
+			tokens.remove (tokens.length - 1)
+			tokens.remove (tokens.length - 1)
+			priorities.remove (priorities.length - 1)
+
+
+		// + -5 => - 5
+		if tokens.length > 1 and tokens.last.value < 0.0
+			tokens.last.value *= -1
+			tokens [tokens.length - 2] = match_data ["-"].generate_token ()
+
 
 	construct by_xy_values (_key: string, values: array of double, match_data: MatchData, needed_decimal_digits:int = 12) raises Calculation.CALC_ERROR
 		var points = new array of Point[0]
@@ -381,7 +393,13 @@ class CustomFunctionData : TokenData
 
 		var multiplication_token = match_data ["*"]
 		var addition_token = match_data ["+"]
+		var subtraction_token = match_data ["-"]
 		var power_token = match_data ["^"]
+
+		assert_nonnull (multiplication_token)
+		assert_nonnull (addition_token)
+		assert_nonnull (subtraction_token)
+		assert_nonnull (power_token)
 
 		var amount_power_tokens = 0
 		var amount_multiplication_tokens = 0
@@ -390,17 +408,19 @@ class CustomFunctionData : TokenData
 		// set parameter info
 		parameters = {new TokenData.variable ("x", 0)}
 
+		var change_sign = false
+
 		for var i = 0 to (points.length - 1)
 			var x = points.length - 1 - i
 
 			if values[x] == 0 and x != 0 do continue
 
-			if values [x] != 1 or x == 0
+			if (values [x] != 1 and values [x] != -1) or x == 0
 				// a
 				tokens.append ( Token () {
 					has_value = true,
 					data = null,
-					value = values [x]
+					value = (change_sign) ? -values [x] : values [x]
 				} )
 
 				if x == 0 do continue
@@ -432,9 +452,15 @@ class CustomFunctionData : TokenData
 					value = x
 				} )
 
+			change_sign = false
+
 			if x > 0
 				// +
-				tokens.append (addition_token.generate_token ())
+				if values [x - 1] >= 0 or x == 1
+					tokens.append (addition_token.generate_token ())
+				else
+					tokens.append (subtraction_token.generate_token ())
+					change_sign = true
 				amount_addition_tokens ++
 
 		arguments = _arguments
@@ -633,7 +659,7 @@ class MatchData
 				return a.key.length < b.key.length
 
 		for var value in old_list
-			new_list.insert_sorted (value, sorting_function)
+			new_list.insert_sorted (value, (LinkedList.SortingFunction of TokenData) sorting_function)
 
 		sorted_tokens = new_list
 
@@ -655,7 +681,7 @@ class MatchData
 
 
 	def remove_token (key: string) raises Calculation.CALC_ERROR
-		//TODO implement
+
 		if not (key in self)
 			raise new Calculation.CALC_ERROR.UNKNOWN ("'%s' is not defined", key)
 
@@ -673,11 +699,6 @@ class MatchData
 		jump_table [index].amount_entries --
 
 		sorted_tokens.remove_where (remove_fun)
-
-
-		/*sort_tokens ()
-		clear_jump_table ()
-		generate_jump_table ()*/
 
 
 	def private _get (key: string): unowned LinkedList.Node of TokenData
