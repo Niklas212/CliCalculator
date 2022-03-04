@@ -574,12 +574,38 @@ class CustomFunctionData : TokenData
 class MatchData
 	prop public default_tokens: LinkedList of TokenData
 		get
+		set
 
 	prop public sorted_tokens: LinkedList of TokenData
 		get
+		set
+
+	sorting_function: static LinkedList.SortingFunction of TokenData
+
+	init static
+		sorting_function = def (a, b)
+			if b.key[0].isalpha ()
+				if a.key[0].isalpha ()
+					if char_to_upper (a.key[0]) < char_to_upper (b.key[0])
+						return false
+					else if char_to_upper (a.key[0]) > char_to_upper (b.key[0])
+						return true
+					else
+						return a.key.length < b.key.length
+				else
+					return false
+			else if a.key[0].isalpha ()
+				return true
+			else
+				return a.key.length < b.key.length
+
 
 	construct ()
 		default_tokens = DefaultValues.get_default_tokens ()
+
+		for var i = 0 to 26
+			jump_table [i].amount_entries = 0
+			jump_table [i].start = null
 
 	jump_table: JumpTableData[27] // index-0 is for non alphabetic characters
 
@@ -611,7 +637,7 @@ class MatchData
 			var is_alpha = first_char_current_node.isalpha ()
 
 			if is_alpha
-				first_char_current_node = char_to_lower (first_char_current_node)
+				first_char_current_node = char_to_upper (first_char_current_node)
 
 			if first_char_previous_node == first_char_current_node or not is_alpha
 				if is_alpha
@@ -642,24 +668,8 @@ class MatchData
 		var old_list = (sorted_tokens == null) ? default_tokens : sorted_tokens
 		var new_list = new LinkedList of TokenData
 
-		sorting_function: LinkedList.SortingFunction of TokenData = def (a, b)
-			if b.key[0].isalpha ()
-				if a.key[0].isalpha ()
-					if char_to_lower (a.key[0]) < char_to_lower (b.key[0])
-						return false
-					else if char_to_lower (a.key[0]) > char_to_lower (b.key[0])
-						return true
-					else
-						return a.key.length < b.key.length
-				else
-					return false
-			else if a.key[0].isalpha ()
-				return true
-			else
-				return a.key.length < b.key.length
-
 		for var value in old_list
-			new_list.insert_sorted (value, (LinkedList.SortingFunction of TokenData) sorting_function)
+			new_list.insert_sorted (value, (LinkedList.SortingFunction of TokenData) self.sorting_function)
 
 		sorted_tokens = new_list
 
@@ -673,12 +683,52 @@ class MatchData
 		if token.key in self
 			raise new Calculation.CALC_ERROR.UNKNOWN ("the key '%s' is already used", token.key)
 
-		sorted_tokens.append (token)
-		sort_tokens ()
-		clear_jump_table ()
-		generate_jump_table ()
+		last_token: TokenData = null
 
 
+		fun: LinkedList.EachNodeI of TokenData = def (node, index, ref proceed)
+			if not sorting_function (token, node.value) or index + 1 == sorted_tokens.length
+
+				var is_last = false
+
+				if sorting_function (token, node.value)
+					index ++
+					is_last = true
+
+				var first_char = token.key [0]
+
+				if first_char.isalpha () do first_char = char_to_upper (first_char)
+
+				if first_char.isalpha ()
+
+					if last_token != null and last_token.key[0].toupper () == first_char
+						jump_table [first_char - 64].amount_entries += 1
+						sorted_tokens.insert (token, index)
+					else
+						sorted_tokens.insert (token, index)
+						jump_table [first_char - 64].amount_entries += 1
+
+						if (not is_last) or (node.value.key[0].toupper () != first_char)
+							jump_table [first_char - 64].start = sorted_tokens.get_node (index)
+				else
+					if last_token != null and last_token.key[0] == first_char
+						jump_table [0].amount_entries += 1
+						sorted_tokens.insert (token, index)
+					else
+						sorted_tokens.insert (token, index)
+						jump_table [0].amount_entries += 1
+
+						if (not is_last) or (node.value.key[0] != first_char)
+							jump_table [0].start = sorted_tokens.get_node (index)
+
+				proceed = false
+
+
+
+			last_token = node.value
+			assert_nonnull (last_token)
+
+		sorted_tokens.each_node_i (fun)
 
 	def remove_token (key: string) raises Calculation.CALC_ERROR
 
@@ -688,15 +738,15 @@ class MatchData
 		remove_fun: LinkedList.CompareFunction of TokenData = def (a)
 			return a.key == key
 
-		var index = (key[0].isalpha ()) ? (char_to_lower (key[0]) - 64) : 0
+		var index = (key[0].isalpha ()) ? (char_to_upper (key[0]) - 64) : 0
 
 		if jump_table [index].start.value.key == key
-			if jump_table [index].start.next != null and char_to_lower (jump_table [index].start.next.value.key [0]) == char_to_lower (key [0])
+			if jump_table [index].start.next != null and char_to_upper (jump_table [index].start.next.value.key [0]) == char_to_upper (key [0])
 				jump_table [index].start = jump_table [index].start.next
 			else
 				jump_table [index].start = null
 
-		jump_table [index].amount_entries --
+		jump_table [index].amount_entries -= 1
 
 		sorted_tokens.remove_where (remove_fun)
 
@@ -705,7 +755,7 @@ class MatchData
 		var first_char = key[0]
 
 		if first_char.isalpha ()
-			first_char = char_to_lower (first_char)
+			first_char = char_to_upper (first_char)
 			node: unowned LinkedList.Node of TokenData = jump_table [first_char - 64].start
 
 			if node == null
@@ -787,7 +837,7 @@ def get_string_index (arr: array of string, match:string):int
 		i ++
 	return -1
 
-def inline char_to_lower (a: char): char
+def inline char_to_upper (a: char): char
 	return ((a - 65) % 32) + 65
 
 def faq(a:double):double
@@ -835,7 +885,7 @@ def get_next_token (input: string, string_start: int, data: MatchData): Token
 	var max_match_length = input.length - string_start
 
 	if first_char.isalpha ()
-		first_char = char_to_lower (first_char)
+		first_char = char_to_upper (first_char)
 		var jump_table_index = first_char - 64
 
 		node: unowned LinkedList.Node of TokenData = data.jump_table[jump_table_index].start

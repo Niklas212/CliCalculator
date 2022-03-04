@@ -153,7 +153,7 @@ public class LinkedList <T> {
 
         if (index == length && index > 0) {
             end.next = (owned) new_node;
-            end = new_node;
+            end = end.next;
         }
 
         if (index != 0 && index != length) {
