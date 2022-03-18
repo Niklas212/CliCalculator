@@ -828,6 +828,61 @@ struct fun_
 		this.min_arg_right = min_arg_right
 
 
+def solve_les (les: array of double [,], ref solution: array of double) raises Calculation.CALC_ERROR
+
+	var amount_terms = les.length[0]
+	var amount_vars = les.length[1] - 1
+
+	if amount_vars > amount_terms
+		raise new Calculation.CALC_ERROR.UNKNOWN ("the linear equation system has infinite solutions")
+
+	// sort the terms
+	for var i = 0 to (amount_terms - 1)
+		if les [i, i] == 0
+			for var j = (i + 1) to (amount_terms)
+				if i == amount_terms
+					raise new Calculation.CALC_ERROR.UNKNOWN ("unable to solve the linear equation system")
+
+				if les [j, i] != 0
+					// swap terms
+					for var n = 0 to amount_vars
+						var tmp = les [i, n]
+						les [i, n] = les [j, n]
+						les [j, n] = tmp
+
+	var new_les = new array of double [amount_terms, amount_vars + 1]
+
+	for var i = 0 to (amount_terms - 1)
+		for var j = 0 to (amount_vars)
+			new_les [i, j] = les [i, j]
+
+	for var i = 0 to (amount_vars - 1)
+		for var j = (i + 1) to (amount_terms - 1)
+
+			if new_les [j , i] == 0
+				continue
+
+			var factor = new_les [j, i] / new_les [i, i]
+			for var n = i to (amount_vars) // result is changed too
+				new_les [j, n] = new_les [i, n] * factor - new_les [j, n]
+
+
+	var reversed_solution = new array of double [amount_vars]
+	for var _i = 0 to (amount_vars - 1)
+		var i = amount_vars - _i - 1
+		var result = new_les [i, amount_vars]
+
+		for var n = (i + 1) to (amount_vars - 1)
+			result -= new_les [i, n] * reversed_solution [amount_vars - 1 - n]
+
+		if new_les [i, i] == 0
+			raise new Calculation.CALC_ERROR.UNKNOWN ("unable to solve the linear equation system")
+
+		reversed_solution [_i] = result / new_les [i, i]
+
+	for var i = 0 to (amount_vars - 1)
+		solution [i] = reversed_solution [amount_vars - 1 - i]
+
 
 def get_string_index (arr: array of string, match:string):int
 	i:int = 0
